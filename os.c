@@ -41,7 +41,7 @@ printf("The fourth thread contains\n");
 pthread_t id = pthread_self();
 int div =2/3;
 printf ("id no4 %lu\n", (unsigned long) id);
-printf ("The multiplication of the 2 numbers is %d \n", div);
+printf ("The division of the 2 numbers is %d \n", div);
 pthread_exit(NULL); 
 } 
 
