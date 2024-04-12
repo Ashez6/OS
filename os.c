@@ -46,43 +46,116 @@ printf ("The division of the 2 numbers is %d \n", div);
 pthread_exit(NULL); 
 } 
 
+// int main() {
+   
+//     struct sched_param params;
+//     int policy=SCHED_RR;
+//     params.sched_priority = 50; // Priority ranges from 1 (lowest) to 99 (highest)
+//     pthread_t id1;
+//     pthread_t id2;
+//     pthread_t id3;
+//     pthread_t id4;
+//     pthread_attr_t * attr;
+//     attr = (pthread_attr_t *)malloc(sizeof(pthread_attr_t));
+
+//     pthread_attr_setschedpolicy(attr,policy);
+//     pthread_attr_setschedparam(attr, &params);
+
+//     pthread_getschedparam(attr, &policy, &params);
+//     printf("Current scheduling policy: %s, priority: %d\n", 
+//            (policy == SCHED_FIFO)  ? "SCHED_FIFO" :
+//            (policy == SCHED_RR)    ? "SCHED_RR" :
+//            (policy == SCHED_OTHER) ? "SCHED_OTHER" : "UNKNOWN",
+//            params.sched_priority);
+
+    
+//     pthread_setschedparam(pthread_self(),policy,&params);
+//     // Creating new threads 
+//     pthread_create(&id1, attr, &func1, NULL); 
+
+//     params.sched_priority = 40;
+//     pthread_attr_setschedparam(attr, &params);
+//     pthread_create(&id2, attr, &func2, NULL); 
+    
+//     params.sched_priority = 80;
+//     pthread_attr_setschedparam(attr, &params);
+//     pthread_create(&id3, attr, &func3, NULL); 
+   
+//     params.sched_priority = 60;
+//     pthread_attr_setschedparam(attr, &params);
+//     pthread_create(&id4, attr, &func4, NULL);
+
+    
+//     printf("This line may be printed before thread terminates\n"); 
+//     // Compare the two threads created 
+//     if(pthread_equal(id1, pthread_self())) 
+//     printf("Thread 1  is equal to main\n");  
+//     else
+//     printf("Thread 1 is not equal to main\n"); 
+//     if(pthread_equal(id2, pthread_self())) 
+//     printf("Thread 2  is equal to main\n"); 
+//     else
+//     printf("Thread 2 is not equal to main\n"); 
+//     if(pthread_equal(id3, pthread_self())) 
+//     printf("Thread 3 is equal to main\n");  
+//     else
+//     printf("Thread 3 is not equal to main\n"); 
+//     if(pthread_equal(id4, pthread_self())) 
+//     printf("Thread 4 is equal to main\n");  
+//     else
+//     printf("Thread 4 is not equal to main\n");  
+
+//     // Waiting for the created thread to terminate 
+//     pthread_join(id1, NULL);
+//     pthread_join(id2, NULL);
+//     pthread_join(id3, NULL);
+//     pthread_join(id4, NULL);
+//     printf("All threads are joined \n"); 
+//     pthread_exit(NULL); 
+//     return 0; 
+// }
+
+void *thread_function(void *arg) {
+    int thread_id = *((int *) arg); // Extract thread ID from argument
+    printf("Thread %d: Starting\n", thread_id);
+
+    for (int i = 0; i < 3; i++) {
+        printf("Thread %d: Executing iteration %d\n", thread_id, i+1);
+        sleep(1); // Simulate some work
+    }
+    
+    printf("Thread %d: Exiting\n", thread_id);
+    pthread_exit(NULL);
+}
+
 int main() {
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    struct sched_param param;
+    param.sched_priority = 90;
 
-pthread_t id1;
-pthread_t id2;
-pthread_t id3;
-pthread_t id4;
-// Creating new threads 
-pthread_create(&id1, NULL, &func1, NULL); 
-pthread_create(&id2, NULL, &func2, NULL); 
-pthread_create(&id3, NULL, &func3, NULL); 
-pthread_create(&id4, NULL, &func4, NULL); 
+    // Experiment with different scheduling policies
+     //pthread_attr_setschedpolicy(&attr, SCHED_FIFO); // FIFO
+     pthread_attr_setschedpolicy(&attr, SCHED_RR);   // Round Robin
+    // pthread_attr_setschedpolicy(&attr, SCHED_OTHER); // Default (Usually Round Robin)
 
-printf("This line may be printed before thread terminates\n"); 
-// Compare the two threads created 
-if(pthread_equal(id1, pthread_self())) 
-printf("Thread 1  is equal to main\n");  
-else
-printf("Thread 1 is not equal to main\n"); 
-if(pthread_equal(id2, pthread_self())) 
-printf("Thread 2  is equal to main\n"); 
-else
-printf("Thread 2 is not equal to main\n"); 
-if(pthread_equal(id3, pthread_self())) 
-printf("Thread 3 is equal to main\n");  
-else
-printf("Thread 3 is not equal to main\n"); 
-if(pthread_equal(id4, pthread_self())) 
-printf("Thread 4 is equal to main\n");  
-else
-printf("Thread 4 is not equal to main\n");  
+    pthread_t threads[4];
+    int thread_ids[4] = {1, 2, 3, 4}; // Thread IDs
 
-// Waiting for the created thread to terminate 
-pthread_join(id1, NULL);
-pthread_join(id2, NULL);
-pthread_join(id3, NULL);
-pthread_join(id4, NULL);
-printf("All threads are joined \n"); 
-pthread_exit(NULL); 
-return 0; 
+    // Create threads with specified scheduling policy
+    // for (int i = 0; i < 4; i++) {
+    //     pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
+    // }
+    for (int i = 0; i < 3; i++) {
+        pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
+    }
+    pthread_attr_setschedparam(&attr, &param);
+    pthread_create(&threads[3], &attr, thread_function, (void *) &thread_ids[3]);
+
+    // Join threads
+    for (int i = 0; i < 4; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
 }
