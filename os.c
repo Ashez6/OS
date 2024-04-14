@@ -132,25 +132,29 @@ int main() {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     struct sched_param param;
-    param.sched_priority = 90;
+    param.sched_priority = 0;
+    int policy;
+    struct sched_param param2;
+    int error;
+    
+    error=pthread_setschedparam(pthread_self(),SCHED_FIFO,&param);
+    if(error) printf("first error");
 
     // Experiment with different scheduling policies
-     //pthread_attr_setschedpolicy(&attr, SCHED_FIFO); // FIFO
-     pthread_attr_setschedpolicy(&attr, SCHED_RR);   // Round Robin
-    // pthread_attr_setschedpolicy(&attr, SCHED_OTHER); // Default (Usually Round Robin)
+     error=pthread_attr_setschedpolicy(&attr, SCHED_FIFO); // FIFO
+     if(error) printf("second error");
+     //pthread_attr_setschedpolicy(&attr, SCHED_RR);   // Round Robin
+    //pthread_attr_setschedpolicy(&attr, SCHED_OTHER); // Default (Usually Round Robin)
 
     pthread_t threads[4];
     int thread_ids[4] = {1, 2, 3, 4}; // Thread IDs
 
     // Create threads with specified scheduling policy
-    // for (int i = 0; i < 4; i++) {
-    //     pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
-    // }
-    for (int i = 0; i < 3; i++) {
-        pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
+    for (int i = 0; i < 4; i++) {
+        printf("Creating a thread\n");
+        error=pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
+        if(error) printf("third error");
     }
-    pthread_attr_setschedparam(&attr, &param);
-    pthread_create(&threads[3], &attr, thread_function, (void *) &thread_ids[3]);
 
     // Join threads
     for (int i = 0; i < 4; i++) {
