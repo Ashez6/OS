@@ -73,15 +73,15 @@ int main() {
 
 // Set scheduling policy and priority for worker threads 
     if(pthread_setschedparam(pthread_self(),SCHED_RR,&param)!=0){
-        printf("main sched error\n");
+        printf("Error setting thread attribute policy\n");
     }
 
    
     if(pthread_attr_setschedpolicy(&attr, SCHED_RR)!=0){
-        printf("attr policy error\n");
+        printf("Error setting thread attribute policy\n");
     }
     if(pthread_attr_setschedparam(&attr,&param)!=0){
-        printf("attr param error\n");
+        printf("Error setting thread attribute priority\n");
     }
     
        
