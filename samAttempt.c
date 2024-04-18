@@ -4,15 +4,26 @@
 #include <pthread.h>
 #include <sched.h>
 
-
 #define NUM_THREADS 4
+#define NUM_ITERATIONS 3
+
+int policy = SCHED_RR; 
+
+int counter = 0;
 
 void *thread_func(void *t) {
     long tid = (long)t;
-      printf("Thread %ld: Starting\n", thread_id);
+    if(policy == SCHED_RR){
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
+        while (counter % NUM_THREADS != tid); // Busy wait
+        printf("Thread %ld: Executing iteration %d\n", tid, i+1);
+        counter++;
+    }
+    }
 
-    for (int i = 0; i < 3; i++) {
-        printf("Thread %ld: Executing iteration %d\n", thread_id, i+1);
+    if (policy == SCHED_FIFO || policy == SCHED_OTHER){
+        for (int i = 0; i < NUM_ITERATIONS; i++)
+        printf("Thread %ld: Executing iteration %d\n", tid, i+1);
     }
     return NULL;
 }
@@ -25,10 +36,9 @@ int main() {
 
     pthread_attr_init(&attr);
 
-    // Set the scheduling policy to round-robin
-    pthread_attr_setschedpolicy(&attr, SCHED_RR);
+    pthread_attr_setschedpolicy(&attr, policy);
 
-    param.sched_priority = sched_get_priority_max(SCHED_RR);
+    param.sched_priority = sched_get_priority_max(policy);
     pthread_attr_setschedparam(&attr, &param);
 
     // Initialize the CPU set
