@@ -10,7 +10,11 @@
 
 cpu_set_t cpu_set;
 
+// Function executed by each thread
+
 void *thread_function(void *arg) {
+
+    // Set thread affinity to a specific CPU core
 
     if(pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set)!=0){
         printf("affinity errorrrr\n");
@@ -19,10 +23,7 @@ void *thread_function(void *arg) {
     int thread_id = *((int *) arg); // Extract thread ID from argument
     printf("Thread %d: Starting\n", thread_id);
 
-    // for (int i = 0; i < 10000; i++) {
-    //     printf("Thread %d: Executing iteration %d\n", thread_id, i+1);
-    //     //sleep(1);
-    // }
+    // Perform some work (iterations)
 
     printf("Thread %d: Executing iteration %d\n", thread_id, 1);
     for(int i=0;i<80000000;i++){
@@ -60,14 +61,17 @@ int main() {
     CPU_ZERO(&cpu_set);
     CPU_SET(0, &cpu_set);
 
+      // Set scheduling policy and priority for the main thread
+
     if(pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set)!=0){
-        printf("affinity error\n");
+        printf("Error setting main thread affinity\n");
     }
     
     if(pthread_attr_setinheritsched(&attr,PTHREAD_EXPLICIT_SCHED)!=0){
-        printf("inherit error\n");
+        printf("Error setting thread inheritance\n\n");
     }
 
+// Set scheduling policy and priority for worker threads 
     if(pthread_setschedparam(pthread_self(),SCHED_RR,&param)!=0){
         printf("main sched error\n");
     }
@@ -80,22 +84,13 @@ int main() {
         printf("attr param error\n");
     }
     
+       
+       
+  // Create and join threads
 
-
-    // Create threads with specified scheduling policy
-    // for (int i = 0; i < 4; i++) {
-    //     printf("Creating a thread\n");
-    //     pthread_create(&threads[i], &attr, thread_function, (void *) &thread_ids[i]);
-        
-    //     //sleep(1);
-    // }
-
-    pthread_create(&threads[0], &attr, thread_function, (void *) &thread_ids[0]);
-    pthread_create(&threads[1], &attr, thread_function, (void *) &thread_ids[1]);
-    pthread_create(&threads[2], &attr, thread_function, (void *) &thread_ids[2]);
-    pthread_create(&threads[3], &attr, thread_function, (void *) &thread_ids[3]);
-
-    // Join threads
+  for (int i = 0; i < 4; i++) {
+        pthread_create(&threads[i], &attr, thread_function, (void *)&thread_ids[i]);
+    }
     for (int i = 0; i < 4; i++) {
         pthread_join(threads[i], NULL);
     }
