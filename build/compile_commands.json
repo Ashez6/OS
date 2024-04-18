@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/Samalouty/source/repos/OSproject/OS/build",
+  "command": "C:\\MinGW\\bin\\gcc.exe   -g -o CMakeFiles\\os.dir\\os.c.obj -c C:\\Users\\Samalouty\\source\\repos\\OSproject\\OS\\os.c",
+  "file": "C:/Users/Samalouty/source/repos/OSproject/OS/os.c",
+  "output": "CMakeFiles/os.dir/os.c.obj"
+}
+]
