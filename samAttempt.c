@@ -9,10 +9,10 @@
 
 void *thread_func(void *t) {
     long tid = (long)t;
-      printf("Thread %d: Starting\n", thread_id);
+      printf("Thread %ld: Starting\n", thread_id);
 
     for (int i = 0; i < 3; i++) {
-        printf("Thread %d: Executing iteration %d\n", thread_id, i+1);
+        printf("Thread %ld: Executing iteration %d\n", thread_id, i+1);
     }
     return NULL;
 }
