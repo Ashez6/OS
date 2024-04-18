@@ -51,9 +51,13 @@ int main() {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     struct sched_param param;
-    param.sched_priority = 99;
-    
+    param.sched_priority = 0;
+    struct timespec start, end;
+    long long execution_time_ns;
 
+    
+// Get the start time
+    clock_gettime(CLOCK_MONOTONIC, &start);
     pthread_t threads[4];
     int thread_ids[4] = {1, 2, 3, 4}; // Thread IDs
     
@@ -72,20 +76,16 @@ int main() {
     }
 
 // Set scheduling policy and priority for worker threads 
-    if(pthread_setschedparam(pthread_self(),SCHED_RR,&param)!=0){
+    if(pthread_setschedparam(pthread_self(),SCHED_OTHER,&param)!=0){
         printf("Error setting thread attribute policy\n");
     }
 
    
-    if(pthread_attr_setschedpolicy(&attr, SCHED_RR)!=0){
+    if(pthread_attr_setschedpolicy(&attr, SCHED_OTHER)!=0){
         printf("Error setting thread attribute policy\n");
     }
-    if(pthread_attr_setschedparam(&attr,&param)!=0){
-        printf("Error setting thread attribute priority\n");
-    }
+
     
-       
-       
   // Create and join threads
 
   for (int i = 0; i < 4; i++) {
@@ -101,6 +101,18 @@ int main() {
     printf("CPU Utilization: User Time = %ld.%06ld s, System Time = %ld.%06ld s\n",
            usage.ru_utime.tv_sec, usage.ru_utime.tv_usec,
            usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
+
+ 
+    
+
+    // Get the end time
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    // Calculate the execution time
+    execution_time_ns = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec);
+    
+    printf("Thread execution time: %lld ns\n", execution_time_ns);
+
 
 
     return 0;
