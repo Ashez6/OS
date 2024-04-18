@@ -19,20 +19,39 @@ void *thread_function(void *arg) {
     int thread_id = *((int *) arg); // Extract thread ID from argument
     printf("Thread %d: Starting\n", thread_id);
 
-    for (int i = 0; i < 3; i++) {
-        printf("Thread %d: Executing iteration %d\n", thread_id, i+1);
-        //sleep(1);
+    // for (int i = 0; i < 10000; i++) {
+    //     printf("Thread %d: Executing iteration %d\n", thread_id, i+1);
+    //     //sleep(1);
+    // }
+
+    printf("Thread %d: Executing iteration %d\n", thread_id, 1);
+    for(int i=0;i<80000000;i++){
+
+    }
+    printf("Thread %d: Executing iteration %d\n", thread_id, 2);
+    for(int i=0;i<80000000;i++){
+
+    }
+    printf("Thread %d: Executing iteration %d\n", thread_id, 3);
+    for(int i=0;i<80000000;i++){
+
+    }
+    printf("Thread %d: Executing iteration %d\n", thread_id, 4);
+    for(int i=0;i<80000000;i++){
+
     }
     
     printf("Thread %d: Exiting\n", thread_id);
     pthread_exit(NULL);
 }
 
+
 int main() {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     struct sched_param param;
-    param.sched_priority = 1;
+    param.sched_priority = 99;
+    
 
     pthread_t threads[4];
     int thread_ids[4] = {1, 2, 3, 4}; // Thread IDs
@@ -71,13 +90,9 @@ int main() {
     //     //sleep(1);
     // }
 
-    printf("Creating a thread\n");
     pthread_create(&threads[0], &attr, thread_function, (void *) &thread_ids[0]);
-    printf("Creating a thread\n");
     pthread_create(&threads[1], &attr, thread_function, (void *) &thread_ids[1]);
-    printf("Creating a thread\n");
     pthread_create(&threads[2], &attr, thread_function, (void *) &thread_ids[2]);
-    printf("Creating a thread\n");
     pthread_create(&threads[3], &attr, thread_function, (void *) &thread_ids[3]);
 
     // Join threads

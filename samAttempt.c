@@ -7,7 +7,7 @@
 #define NUM_THREADS 4
 #define NUM_ITERATIONS 3
 
-int policy = SCHED_RR; 
+int policy = SCHED_FIFO; 
 
 int counter = 0;
 
