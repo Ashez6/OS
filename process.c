@@ -237,18 +237,47 @@ int read_program_to_memory(const char *filename, Memory *memory)
 // Function to execute a program based on its instructions
 void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_output_mutex, Mutex *user_input_mutex, Mutex *file_mutex, ProcessQueue *ready_queues[], ProcessQueue *general_blocked_queue)
 {
+    if (pcb == NULL)
+    {
+        fprintf(stderr, "Error: Null process control block.\n");
+        return;
+    }
+
+    printf("Executing program for process id=%d\n", pcb->process_id);
+
     int pc = pcb->program_counter;
 
     while (pc < pcb->memory_end)
     {
         char *instruction = memory->data[pc];
 
+        if (instruction == NULL)
+        {
+            fprintf(stderr, "Error: Null instruction at pc=%d\n", pc);
+            break;
+        }
+
+        printf("Processing instruction: %s\n", instruction);
+
         // Tokenize the instruction
         char *token = strtok(instruction, " ");
 
+        if (token == NULL)
+        {
+            fprintf(stderr, "Error: Null token in instruction at pc=%d\n", pc);
+            break;
+        }
+
         if (strcmp(token, "print") == 0)
         {
+
             token = strtok(NULL, " ");
+            if (token == NULL)
+            {
+                fprintf(stderr, "Error: Null token after 'print' at pc=%d\n", pc);
+                break;
+            }
+
             int value = atoi(token);
 
             semWait(user_output_mutex, pcb, general_blocked_queue);
@@ -259,6 +288,12 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         {
             char *variable = strtok(NULL, " "); // The variable name
             char *value = strtok(NULL, " ");    // The value to assign
+
+            if (variable == NULL || value == NULL)
+            {
+                fprintf(stderr, "Error: Null variable or value after 'assign' at pc=%d\n", pc);
+                break;
+            }
 
             // If the value is "input", we ask for user input
             if (strcmp(value, "input") == 0)
