@@ -339,6 +339,11 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             printf("value: %sh\n", value);      // TODO remove newline
 
             char *input;
+            if (input == NULL)
+            {
+                fprintf(stderr, "Error: Null input at pc=%d\n", pc);
+                break;
+            }
 
             for (int i = 0; i < 5; i++)
             {
@@ -426,10 +431,26 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             int start = atoi(strtok(NULL, " "));
             int end = atoi(strtok(NULL, " "));
 
+            printf("The start is:%d\n ", start);
+            printf("The end is:%d\n ", end);
+
             semWait(user_output_mutex, pcb, general_blocked_queue);
-            for (int i = start; i <= end; i++)
+
+            int i;
+
+            if (start <= end)
             {
-                printf("%d ", i);
+                for (i = start; i <= end; ++i)
+                {
+                    printf("%d ", i);
+                }
+            }
+            else
+            {
+                for (i = start; i >= end; --i)
+                {
+                    printf("%d ", i);
+                }
             }
             printf("\n");
             semSignal(user_output_mutex, ready_queues, 4);
