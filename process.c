@@ -147,8 +147,16 @@ void initialize_mutex(Mutex *mutex)
 // Function to acquire a mutex (semWait)
 void semWait(Mutex *mutex, ProcessControlBlock *pcb, ProcessQueue *general_blocked_queue)
 {
+    if (mutex == NULL)
+    {
+        fprintf(stderr, "Error: Null mutex during semWait.\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("semWait on mutex, is_locked=%d\n", mutex->is_locked);
+
     if (mutex->is_locked)
     {
+        printf("Mutex is locked, adding PCB to blocked queue.\n");
         pcb->state = BLOCKED;
         enqueue(&mutex->blocked_queue, pcb);
         enqueue(general_blocked_queue, pcb);
@@ -156,20 +164,34 @@ void semWait(Mutex *mutex, ProcessControlBlock *pcb, ProcessQueue *general_block
     else
     {
         mutex->is_locked = true;
+        printf("Mutex is now locked.\n");
     }
 }
 
-// Function to release a mutex (semSignal)
-void semSignal(Mutex *mutex, ProcessQueue *ready_queues[], int max_priority)
+// Function to release a mutex (semWait)
+
+void semSignal(Mutex *mutex, ProcessQueue **ready_queues, int max_priority)
 {
+    if (mutex == NULL)
+    {
+        fprintf(stderr, "Error: Null mutex during semSignal.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("semSignal on mutex, is_locked=%d\n", mutex->is_locked);
+
     if (mutex->blocked_queue.front != mutex->blocked_queue.rear)
     {
+        printf("Unblocking process from mutex.\n");
         ProcessControlBlock *pcb = dequeue(&mutex->blocked_queue);
         mutex->is_locked = false;
 
-        // Add the process to the correct ready queue based on its priority
         enqueue(ready_queues[pcb->priority - 1], pcb);
         pcb->state = READY;
+    }
+    else
+    {
+        mutex->is_locked = false;
     }
 }
 
@@ -234,6 +256,30 @@ int read_program_to_memory(const char *filename, Memory *memory)
     return start; // Returns the start index in memory
 }
 
+void print_with_escapes(const char *str)
+{
+    while (*str)
+    {
+        if (*str == '\n')
+        {
+            printf("\\n");
+        }
+        else if (*str == '\t')
+        {
+            printf("\\t");
+        }
+        else if (*str == '\\')
+        {
+            printf("\\\\");
+        }
+        else
+        {
+            putchar(*str);
+        }
+        str++;
+    }
+}
+
 // Function to execute a program based on its instructions
 void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_output_mutex, Mutex *user_input_mutex, Mutex *file_mutex, ProcessQueue *ready_queues[], ProcessQueue *general_blocked_queue)
 {
@@ -250,14 +296,13 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
     while (pc < pcb->memory_end)
     {
         char *instruction = memory->data[pc];
-
         if (instruction == NULL)
         {
             fprintf(stderr, "Error: Null instruction at pc=%d\n", pc);
             break;
         }
 
-        printf("Processing instruction: %s\n", instruction);
+        printf("Processing instruction: %s", instruction);
 
         // Tokenize the instruction
         char *token = strtok(instruction, " ");
@@ -286,8 +331,21 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         }
         else if (strcmp(token, "assign") == 0)
         {
+            printf("Entered assign \n");
             char *variable = strtok(NULL, " "); // The variable name
             char *value = strtok(NULL, " ");    // The value to assign
+
+            printf("variable: %s\n", variable); // TODO remove newline
+            printf("value: %sh\n", value);      // TODO remove newline
+
+            char *input;
+
+            for (int i = 0; i < 5; i++)
+            {
+                input[i] = value[i];
+            }
+
+            printf("value: %sh\n", input);
 
             if (variable == NULL || value == NULL)
             {
@@ -296,7 +354,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             }
 
             // If the value is "input", we ask for user input
-            if (strcmp(value, "input") == 0)
+            if (strcmp(input, "input") == 0)
             {
                 semWait(user_input_mutex, pcb, general_blocked_queue); // Locking user input
                 printf("Please enter a value: ");
@@ -490,6 +548,11 @@ int main()
                 current_pcb->state = READY;
                 enqueue(ready_queues[current_priority - 1], current_pcb);
             }
+        }
+        else
+        {
+            printf("No processes at current priority level, exiting loop.\n");
+            break; // Exit the loop if there's no valid priority
         }
     }
 
