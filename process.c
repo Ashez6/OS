@@ -196,13 +196,14 @@ void semSignal(Mutex *mutex, ProcessQueue **ready_queues, int max_priority)
 }
 
 // Function to run the scheduler
-void run_scheduler(ProcessQueue **ready_queues, int *current_priority, int *quantum)
+void run_scheduler(ProcessQueue *ready_queues[], int *current_priority, int *quantum)
 {
+    // Loop through the queues from highest to lowest priority
     for (int i = 0; i < MAX_QUEUES; i++)
     {
         if (ready_queues[i]->front != ready_queues[i]->rear)
         {
-            *current_priority = i + 1; // Set to the queue with processes
+            *current_priority = i + 1;
 
             switch (*current_priority)
             {
@@ -220,12 +221,12 @@ void run_scheduler(ProcessQueue **ready_queues, int *current_priority, int *quan
                 break;
             }
 
-            return; // Return as we've found a queue with a process
+            return;
         }
     }
 
-    *current_priority = 0; // No processes to execute
-    *quantum = 0;          // No quantum time
+    *current_priority = 0; // If no process is in any queue, set to 0
+    *quantum = 0;          // No process to execute
 }
 
 int read_program_to_memory(const char *filename, Memory *memory)
@@ -238,27 +239,22 @@ int read_program_to_memory(const char *filename, Memory *memory)
     }
 
     int start = memory->used;
-    char buffer[100]; // Increase the buffer size to accommodate longer lines
+    char buffer[50];
 
     while (fgets(buffer, sizeof(buffer), file))
     {
-        // Strip any line-ending characters
-        buffer[strcspn(buffer, "\r\n")] = 0;
-
         if (memory->used >= MEMORY_SIZE)
         {
             fprintf(stderr, "Memory overflow.\n");
             exit(EXIT_FAILURE);
         }
-
-        strcpy(memory->data[memory->used], buffer); // Store the complete line in memory
+        strcpy(memory->data[memory->used], buffer);
         memory->used++;
     }
 
     fclose(file);
     return start; // Returns the start index in memory
 }
-
 void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const char *variable, const char *value)
 {
     if (memory == NULL || pcb == NULL || variable == NULL || value == NULL)
@@ -363,7 +359,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         if (strcmp(token, "print") == 0)
         {
 
-            token = strtok(NULL, " ");
+            token = strtok(NULL, "\r");
             // token[strcspn(token, "\r\n")] = 0;
 
             if (token == NULL)
@@ -372,21 +368,20 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
                 break;
             }
 
-            int value = atoi(token);
+            const char *variableName = token;
+            const char *variablevalue = get_variable_value(memory, pcb, variableName);
 
             semWait(user_output_mutex, pcb, general_blocked_queue);
-            printf("Output: %d\n", value);
+            printf("Output: %d\n", variablevalue);
             semSignal(user_output_mutex, ready_queues, 4);
         }
         else if (strcmp(token, "assign") == 0)
         {
             printf("Entered assign \n");
             char *variable = strtok(NULL, " "); // The variable name
-            char *value = strtok(NULL, " ");    // The value to assign
+            char *value = strtok(NULL, "\r");   // The value to assign
 
             printf("variable: %s\n", variable);
-
-            value[strcspn(value, "\r\n")] = 0;
 
             printf("value: %s\n", value);
 
@@ -421,9 +416,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         }
         else if (strcmp(token, "semWait") == 0)
         {
-            char *resource = strtok(NULL, "\r");
-
-            printf("h%sh\n", resource);
+            char *resource = strtok(NULL, " ");
+            // resource[strcspn(resource, "\r\n")] = 0;
 
             if (strcmp(resource, "userOutput") == 0)
             {
@@ -441,8 +435,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         else if (strcmp(token, "semSignal") == 0)
         {
             char *resource = strtok(NULL, " ");
-            resource[strcspn(resource, "\r\n")] = 0;
-            printf("h%sh\n", resource);
+            // resource[strcspn(resource, "\r\n")] = 0;
 
             if (strcmp(resource, "userOutput") == 0)
             {
