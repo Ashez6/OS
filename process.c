@@ -401,19 +401,11 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             char *variable = strtok(NULL, " "); // The variable name
             char *value = strtok(NULL, " ");    // The value to assign
 
-            printf("variable: %s\n", variable); // TODO remove newline
-            printf("value: %sh\n", value);      // TODO remove newline
-
-            char *input;
-            if (input == NULL)
-            {
-                fprintf(stderr, "Error: Null input at pc=%d\n", pc);
-                break;
-            }
+            printf("variable: %s\n", variable);
 
             value[strcspn(value, "\r\n")] = 0;
 
-            printf("value: %sh\n", input);
+            printf("value: %s\n", value);
 
             if (variable == NULL || value == NULL)
             {
@@ -486,7 +478,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             char *endVar = strtok(NULL, " ");
             endVar[strcspn(endVar, "\r\n")] = 0;
 
-            printf("endvar here: h%sh\n", endVar);
+            printf("start variable: %s\n", startVar);
+            printf("end variable: %s\n", endVar);
 
             const char *start_value = get_variable_value(memory, pcb, startVar);
             const char *end_value = get_variable_value(memory, pcb, endVar);
@@ -500,8 +493,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             int start = atoi(start_value);
             int end = atoi(end_value);
 
-            printf("The start is:%d\n ", start);
-            printf("The end is:%d\n ", end);
+            printf("The start value is :%d\n", start);
+            printf("The end value is:%d\n", end);
 
             semWait(user_output_mutex, pcb, general_blocked_queue);
 
