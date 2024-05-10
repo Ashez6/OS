@@ -57,6 +57,20 @@ Mutex fileMutex;
 Queue generalBlockedQueue;
 
 
+char* my_strcpy(char* dest, const char* src) {
+    char* original_dest = dest; 
+
+    while (*src != '\0') {
+        *dest = *src;
+        dest++;
+        src++;
+    }
+
+    *dest = '\0';
+
+    return original_dest; 
+}
+
 void enqueue(Queue *queue, PCB *pcb)
 {
     if (queue->size >= MAX_PROCESSES)
@@ -123,7 +137,6 @@ void initialize_mutex(Mutex *mutex)
 
 int read_program_to_memory(const char *filename)
 {
-    printf("hi\n");
     FILE *file = fopen(filename, "r");
     if (!file)
     {
@@ -141,8 +154,7 @@ int read_program_to_memory(const char *filename)
             exit(EXIT_FAILURE);
         }
         memory[used][0]= "lineOfCode";
-        printf("bye\n");
-        strcpy(memory[used][1], buffer);
+        strcpy((char*)memory[used][1],buffer);
         used++;
     }
 
@@ -228,9 +240,9 @@ void execute_program(PCB *pcb)
 
     while (pc < pcb->memory_end)
     {
-        if(strcmp(((char*)memory[pc+1][0]),"lineOfCode") == 0){
+        if(strcmp(((char*)memory[pc][0]),"lineOfCode") == 0){
 
-            char *instruction = (char*)memory[pc+1][1];
+            char *instruction = (char*)memory[pc][1];
             if (instruction == NULL)
             {
                 fprintf(stderr, "Error: Null instruction at pc=%d\n", pc);
@@ -412,16 +424,19 @@ int main(){
     for (int i = 0; i < 60; i++){
         memory[i][0] = malloc(sizeof(void*));
         memory[i][1] = malloc(sizeof(void*));
-        memset(memory[i], 0, sizeof(memory[i]));
+        
     }
 
-    
+
     (&generalBlockedQueue)->head = 0;
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
+    
 
     PCB* p = create_process(1,1,"Program_1.txt");
     execute_program(p);
+
+    
 
     // Free dynamically allocated memory
     for (int i = 0; i < 60; i++){
