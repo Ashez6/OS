@@ -255,43 +255,27 @@ int read_program_to_memory(const char *filename, Memory *memory)
     fclose(file);
     return start; // Returns the start index in memory
 }
-
-void print_with_escapes(const char *str)
-{
-    while (*str)
-    {
-        if (*str == '\n')
-        {
-            printf("\\n");
-        }
-        else if (*str == '\t')
-        {
-            printf("\\t");
-        }
-        else if (*str == '\\')
-        {
-            printf("\\\\");
-        }
-        else
-        {
-            putchar(*str);
-        }
-        str++;
-    }
-}
-
 void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const char *variable, const char *value)
 {
+    if (memory == NULL || pcb == NULL || variable == NULL || value == NULL)
+    {
+        fprintf(stderr, "Error: Invalid parameter passed to store_variable_in_memory.\n");
+        return;
+    }
+
+    // Create a unique variable name using the process ID
+    char unique_variable_name[50];
+    snprintf(unique_variable_name, sizeof(unique_variable_name), "%d%s", pcb->process_id, variable); // Format: "1a"
+
     int found = 0;
 
     // Check if the variable already exists
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-
-        if (strcmp(memory->data[i], variable) == 0)
+        if (strcmp(memory->data[i], unique_variable_name) == 0)
         {
-            strcpy(memory->data[i], value); // Store the new value
-            found = 1;                      // Mark that the variable was found
+            strcpy(memory->data[i + 1], value); // Store the new value
+            found = 1;                          // Mark that the variable was found
             break;
         }
     }
@@ -299,14 +283,14 @@ void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const ch
     // If variable was not found, add it to memory
     if (!found)
     {
-        if (pcb->memory_end >= MEMORY_SIZE)
+        if (pcb->memory_end + 2 > MEMORY_SIZE)
         {
-            fprintf(stderr, "Error: Memory overflow.\n");
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "Error: Memory overflow while storing variable '%s'.\n", unique_variable_name);
+            return; // Handle overflow
         }
 
         // Add the variable name and its value
-        strcpy(memory->data[pcb->memory_end], variable);
+        strcpy(memory->data[pcb->memory_end], unique_variable_name);
         strcpy(memory->data[pcb->memory_end + 1], value);
 
         pcb->memory_end += 2; // Increment memory_end to account for the new variable and its value
@@ -321,11 +305,15 @@ const char *get_variable_value(Memory *memory, ProcessControlBlock *pcb, const c
         return NULL;
     }
 
+    // Create the unique variable name with the process ID
+    char unique_variable_name[50];
+    snprintf(unique_variable_name, sizeof(unique_variable_name), "%d%s", pcb->process_id, variable); // Format: "1a"
+
     // Loop through the process's memory range
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-        // Check if this memory slot contains the variable name
-        if (strcmp(memory->data[i], variable) == 0)
+        // Check if this memory slot contains the unique variable name
+        if (strcmp(memory->data[i], unique_variable_name) == 0)
         {
             if (i + 1 < pcb->memory_end)
             {                               // Ensure there's a value after the variable name
@@ -333,14 +321,14 @@ const char *get_variable_value(Memory *memory, ProcessControlBlock *pcb, const c
             }
             else
             {
-                fprintf(stderr, "Error: Variable found, but no associated value.\n");
+                fprintf(stderr, "Error: Variable '%s' found, but no associated value.\n", unique_variable_name);
                 return NULL;
             }
         }
     }
 
     // If the variable isn't found, return NULL or an appropriate message
-    fprintf(stderr, "Error: Variable '%s' not found in memory.\n", variable);
+    fprintf(stderr, "Error: Variable '%s' not found in memory.\n", unique_variable_name);
     return NULL;
 }
 

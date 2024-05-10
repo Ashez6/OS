@@ -12,12 +12,12 @@ void removeNewline(char *str)
 
 int main()
 {
-    char myString[] = "b\n";
-    printf("Original string: %s\n", myString);
+    int pid = 3;
+    char str[20];
+    char str1[20] = "a";
 
-    myString[strcspn(myString, "\r\n")] = 0;
+    sprintf(str + strlen(str), "%d", pid, str1);
 
-    printf("Modified string: %s\n", myString);
-
+    printf("%s", str);
     return 0;
 }
