@@ -280,6 +280,70 @@ void print_with_escapes(const char *str)
     }
 }
 
+void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const char *variable, const char *value)
+{
+    int found = 0;
+
+    // Check if the variable already exists
+    for (int i = pcb->memory_start; i < pcb->memory_end; i++)
+    {
+
+        if (strcmp(memory->data[i], variable) == 0)
+        {
+            strcpy(memory->data[i], value); // Store the new value
+            found = 1;                      // Mark that the variable was found
+            break;
+        }
+    }
+
+    // If variable was not found, add it to memory
+    if (!found)
+    {
+        if (pcb->memory_end >= MEMORY_SIZE)
+        {
+            fprintf(stderr, "Error: Memory overflow.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Add the variable name and its value
+        strcpy(memory->data[pcb->memory_end], variable);
+        strcpy(memory->data[pcb->memory_end + 1], value);
+
+        pcb->memory_end += 2; // Increment memory_end to account for the new variable and its value
+    }
+}
+
+const char *get_variable_value(Memory *memory, ProcessControlBlock *pcb, const char *variable)
+{
+    if (memory == NULL || pcb == NULL || variable == NULL)
+    {
+        fprintf(stderr, "Error: Invalid parameter passed to get_variable_value.\n");
+        return NULL;
+    }
+
+    // Loop through the process's memory range
+    for (int i = pcb->memory_start; i < pcb->memory_end; i++)
+    {
+        // Check if this memory slot contains the variable name
+        if (strcmp(memory->data[i], variable) == 0)
+        {
+            if (i + 1 < pcb->memory_end)
+            {                               // Ensure there's a value after the variable name
+                return memory->data[i + 1]; // Return the associated value
+            }
+            else
+            {
+                fprintf(stderr, "Error: Variable found, but no associated value.\n");
+                return NULL;
+            }
+        }
+    }
+
+    // If the variable isn't found, return NULL or an appropriate message
+    fprintf(stderr, "Error: Variable '%s' not found in memory.\n", variable);
+    return NULL;
+}
+
 // Function to execute a program based on its instructions
 void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_output_mutex, Mutex *user_input_mutex, Mutex *file_mutex, ProcessQueue *ready_queues[], ProcessQueue *general_blocked_queue)
 {
@@ -317,6 +381,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         {
 
             token = strtok(NULL, " ");
+            // token[strcspn(token, "\r\n")] = 0;
+
             if (token == NULL)
             {
                 fprintf(stderr, "Error: Null token after 'print' at pc=%d\n", pc);
@@ -345,10 +411,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
                 break;
             }
 
-            for (int i = 0; i < 5; i++)
-            {
-                input[i] = value[i];
-            }
+            value[strcspn(value, "\r\n")] = 0;
 
             printf("value: %sh\n", input);
 
@@ -359,42 +422,32 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             }
 
             // If the value is "input", we ask for user input
-            if (strcmp(input, "input") == 0)
+            if (strcmp(value, "input") == 0)
             {
                 semWait(user_input_mutex, pcb, general_blocked_queue); // Locking user input
                 printf("Please enter a value: ");
                 char user_input[50]; // Adjust the size based on expected input
-                fgets(user_input, sizeof(user_input), stdin);
-                user_input[strcspn(user_input, "\n")] = '\0'; // Remove newline
-
-                // Store the user input in memory
-                for (int i = pcb->memory_start; i < pcb->memory_end; i++)
+                if (fgets(user_input, sizeof(user_input), stdin) == NULL)
                 {
-                    if (strcmp(memory->data[i], variable) == 0)
-                    {
-                        strcpy(memory->data[i], user_input);
-                        break;
-                    }
+                    fprintf(stderr, "Error: Failed to read user input.\n");
+                }
+                else
+                {
+                    user_input[strcspn(user_input, "\n")] = '\0';                // Remove newline
+                    store_variable_in_memory(memory, pcb, variable, user_input); // Store variable
                 }
 
                 semSignal(user_input_mutex, ready_queues, 4); // Unlocking user input
             }
             else
             {
-                // If it's not "input", just assign the given value
-                for (int i = pcb->memory_start; i < pcb->memory_end; i++)
-                {
-                    if (strcmp(memory->data[i], variable) == 0)
-                    {
-                        strcpy(memory->data[i], value);
-                        break;
-                    }
-                }
+                store_variable_in_memory(memory, pcb, variable, value); // Store variable with given value
             }
         }
         else if (strcmp(token, "semWait") == 0)
         {
             char *resource = strtok(NULL, " ");
+            // resource[strcspn(resource, "\r\n")] = 0;
 
             if (strcmp(resource, "userOutput") == 0)
             {
@@ -412,6 +465,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         else if (strcmp(token, "semSignal") == 0)
         {
             char *resource = strtok(NULL, " ");
+            // resource[strcspn(resource, "\r\n")] = 0;
 
             if (strcmp(resource, "userOutput") == 0)
             {
@@ -428,8 +482,23 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         }
         else if (strcmp(token, "printFromTo") == 0)
         {
-            int start = atoi(strtok(NULL, " "));
-            int end = atoi(strtok(NULL, " "));
+            char *startVar = strtok(NULL, " ");
+            char *endVar = strtok(NULL, " ");
+            endVar[strcspn(endVar, "\r\n")] = 0;
+
+            printf("endvar here: h%sh\n", endVar);
+
+            const char *start_value = get_variable_value(memory, pcb, startVar);
+            const char *end_value = get_variable_value(memory, pcb, endVar);
+
+            if (start_value == NULL || end_value == NULL)
+            {
+                fprintf(stderr, "Error: Variable(s) not found for 'printFromTo'.\n");
+                return; // Handle variable not found
+            }
+
+            int start = atoi(start_value);
+            int end = atoi(end_value);
 
             printf("The start is:%d\n ", start);
             printf("The end is:%d\n ", end);
@@ -460,6 +529,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             char *filename = strtok(NULL, " ");
             char *content = strtok(NULL, " ");
 
+            // content[strcspn(content, "\r\n")] = 0;
+
             semWait(file_mutex, pcb, general_blocked_queue);
             FILE *file = fopen(filename, "w");
             if (file)
@@ -472,6 +543,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         else if (strcmp(token, "readFile") == 0)
         {
             char *filename = strtok(NULL, " ");
+            // filename[strcspn(filename, "\r\n")] = 0;
 
             semWait(file_mutex, pcb, general_blocked_queue);
             FILE *file = fopen(filename, "r");
