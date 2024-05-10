@@ -196,14 +196,13 @@ void semSignal(Mutex *mutex, ProcessQueue **ready_queues, int max_priority)
 }
 
 // Function to run the scheduler
-void run_scheduler(ProcessQueue *ready_queues[], int *current_priority, int *quantum)
+void run_scheduler(ProcessQueue **ready_queues, int *current_priority, int *quantum)
 {
-    // Loop through the queues from highest to lowest priority
     for (int i = 0; i < MAX_QUEUES; i++)
     {
         if (ready_queues[i]->front != ready_queues[i]->rear)
         {
-            *current_priority = i + 1;
+            *current_priority = i + 1; // Set to the queue with processes
 
             switch (*current_priority)
             {
@@ -221,12 +220,12 @@ void run_scheduler(ProcessQueue *ready_queues[], int *current_priority, int *qua
                 break;
             }
 
-            return;
+            return; // Return as we've found a queue with a process
         }
     }
 
-    *current_priority = 0; // If no process is in any queue, set to 0
-    *quantum = 0;          // No process to execute
+    *current_priority = 0; // No processes to execute
+    *quantum = 0;          // No quantum time
 }
 
 int read_program_to_memory(const char *filename, Memory *memory)
@@ -239,22 +238,27 @@ int read_program_to_memory(const char *filename, Memory *memory)
     }
 
     int start = memory->used;
-    char buffer[50];
+    char buffer[100]; // Increase the buffer size to accommodate longer lines
 
     while (fgets(buffer, sizeof(buffer), file))
     {
+        // Strip any line-ending characters
+        buffer[strcspn(buffer, "\r\n")] = 0;
+
         if (memory->used >= MEMORY_SIZE)
         {
             fprintf(stderr, "Memory overflow.\n");
             exit(EXIT_FAILURE);
         }
-        strcpy(memory->data[memory->used], buffer);
+
+        strcpy(memory->data[memory->used], buffer); // Store the complete line in memory
         memory->used++;
     }
 
     fclose(file);
     return start; // Returns the start index in memory
 }
+
 void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const char *variable, const char *value)
 {
     if (memory == NULL || pcb == NULL || variable == NULL || value == NULL)
@@ -263,16 +267,12 @@ void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const ch
         return;
     }
 
-    // Create a unique variable name using the process ID
-    char unique_variable_name[50];
-    snprintf(unique_variable_name, sizeof(unique_variable_name), "%d%s", pcb->process_id, variable); // Format: "1a"
-
     int found = 0;
 
     // Check if the variable already exists
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-        if (strcmp(memory->data[i], unique_variable_name) == 0)
+        if (strcmp(memory->data[i], variable) == 0)
         {
             strcpy(memory->data[i + 1], value); // Store the new value
             found = 1;                          // Mark that the variable was found
@@ -285,12 +285,12 @@ void store_variable_in_memory(Memory *memory, ProcessControlBlock *pcb, const ch
     {
         if (pcb->memory_end + 2 > MEMORY_SIZE)
         {
-            fprintf(stderr, "Error: Memory overflow while storing variable '%s'.\n", unique_variable_name);
+            fprintf(stderr, "Error: Memory overflow while storing variable '%s'.\n", variable);
             return; // Handle overflow
         }
 
         // Add the variable name and its value
-        strcpy(memory->data[pcb->memory_end], unique_variable_name);
+        strcpy(memory->data[pcb->memory_end], variable);
         strcpy(memory->data[pcb->memory_end + 1], value);
 
         pcb->memory_end += 2; // Increment memory_end to account for the new variable and its value
@@ -305,15 +305,10 @@ const char *get_variable_value(Memory *memory, ProcessControlBlock *pcb, const c
         return NULL;
     }
 
-    // Create the unique variable name with the process ID
-    char unique_variable_name[50];
-    snprintf(unique_variable_name, sizeof(unique_variable_name), "%d%s", pcb->process_id, variable); // Format: "1a"
-
     // Loop through the process's memory range
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-        // Check if this memory slot contains the unique variable name
-        if (strcmp(memory->data[i], unique_variable_name) == 0)
+        if (strcmp(memory->data[i], variable) == 0)
         {
             if (i + 1 < pcb->memory_end)
             {                               // Ensure there's a value after the variable name
@@ -321,14 +316,14 @@ const char *get_variable_value(Memory *memory, ProcessControlBlock *pcb, const c
             }
             else
             {
-                fprintf(stderr, "Error: Variable '%s' found, but no associated value.\n", unique_variable_name);
+                fprintf(stderr, "Error: Variable '%s' found, but no associated value.\n", variable);
                 return NULL;
             }
         }
     }
 
     // If the variable isn't found, return NULL or an appropriate message
-    fprintf(stderr, "Error: Variable '%s' not found in memory.\n", unique_variable_name);
+    fprintf(stderr, "Error: Variable '%s' not found in memory.\n", variable);
     return NULL;
 }
 
@@ -354,7 +349,7 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
             break;
         }
 
-        printf("Processing instruction: %s", instruction);
+        printf("Processing instruction: %s\n", instruction);
 
         // Tokenize the instruction
         char *token = strtok(instruction, " ");
@@ -426,8 +421,9 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         }
         else if (strcmp(token, "semWait") == 0)
         {
-            char *resource = strtok(NULL, " ");
-            // resource[strcspn(resource, "\r\n")] = 0;
+            char *resource = strtok(NULL, "\r");
+
+            printf("h%sh\n", resource);
 
             if (strcmp(resource, "userOutput") == 0)
             {
@@ -445,7 +441,8 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         else if (strcmp(token, "semSignal") == 0)
         {
             char *resource = strtok(NULL, " ");
-            // resource[strcspn(resource, "\r\n")] = 0;
+            resource[strcspn(resource, "\r\n")] = 0;
+            printf("h%sh\n", resource);
 
             if (strcmp(resource, "userOutput") == 0)
             {
