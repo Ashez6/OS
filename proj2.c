@@ -56,21 +56,6 @@ Mutex outputMutex;
 Mutex fileMutex;
 Queue generalBlockedQueue;
 
-
-char* my_strcpy(char* dest, const char* src) {
-    char* original_dest = dest; 
-
-    while (*src != '\0') {
-        *dest = *src;
-        dest++;
-        src++;
-    }
-
-    *dest = '\0';
-
-    return original_dest; 
-}
-
 void enqueue(Queue *queue, PCB *pcb)
 {
     if (queue->size >= MAX_PROCESSES)
@@ -106,6 +91,7 @@ void semWait(Mutex *m , PCB *p) {
         m->ownerID = p->process_id;
         m->value = zero;
     } else {
+        p->state = BLOCKED;
         enqueue(&(m->queue),p);
         enqueue(&generalBlockedQueue,p);
     }
@@ -117,6 +103,7 @@ void semSignal(Mutex *m, PCB *p) {
         if ((&(m->queue))->size==0)
             m->value = one;
         else {
+            p->state = READY;
             dequeue(&generalBlockedQueue);
             PCB* p2 = dequeue(&(m->queue));
             m->ownerID = p2->process_id;
@@ -157,6 +144,7 @@ int read_program_to_memory(const char *filename)
         strcpy((char*)memory[used][1],buffer);
         used++;
     }
+    strcat((char*)memory[used-1][1],"\r\n");
 
     fclose(file);
     
@@ -171,12 +159,17 @@ PCB *create_process(int id, int priority, char* functionName)
     memory[used][0] = "PCB";
     memory[used][1] = pcb;
     used++;
+    printf("not freed successfully\n");
+    free(memory[used-1][0]);
+    free(memory[used-1][1]);
+    printf("freed successfully\n");
     pcb->process_id = id;
     pcb->state = NEW;
     pcb->priority = priority;
     int start = read_program_to_memory(functionName);
     pcb->program_counter = start;
     pcb->memory_end = used+2;
+
 
     return pcb;
 }
@@ -213,10 +206,10 @@ void store_variable(PCB *pcb, char *variable, char *value)
     }
 
     // If variable was not found, add it to memory
-    if (!found)
-    {
+    if (!found){
         for (int i = pcb->memory_end-2 ; i <= pcb->memory_end; i++){
-            if(memory[i][0] == 0){
+            //printf("mem location %i",((char*)memory[i][0]);
+            if(*(int*)memory[i][0] == 0){
                 strcpy(memory[i][0], variable);
                 strcpy(memory[i][1], value);
                 break;
@@ -424,25 +417,28 @@ int main(){
     for (int i = 0; i < 60; i++){
         memory[i][0] = malloc(sizeof(void*));
         memory[i][1] = malloc(sizeof(void*));
-        
     }
 
+    initialize_mutex(&inputMutex);
+    initialize_mutex(&outputMutex);
+    initialize_mutex(&fileMutex);
 
     (&generalBlockedQueue)->head = 0;
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
-    
 
     PCB* p = create_process(1,1,"Program_1.txt");
+    // printf("not freed successfully\n");
+    // free(memory[0][0]);
+    // free(memory[0][1]);
+    // printf("freed successfully\n");
     execute_program(p);
 
-    
-
     // Free dynamically allocated memory
-    for (int i = 0; i < 60; i++){
-        free(memory[i][0]);
-        free(memory[i][1]);
-    }
-
+    // for (int i = 0; i < 60; i++){
+    //     free(memory[i][0]);
+    //     free(memory[i][1]);
+    // }
+  
     return 0;
 }
