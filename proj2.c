@@ -156,13 +156,9 @@ PCB *create_process(int id, int priority, char* functionName)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
     pcb->memory_start = used;
-    memory[used][0] = "PCB";
-    memory[used][1] = pcb;
+    strcpy(memory[used][0],"PCB");
+    memcpy(memory[used][1],pcb,sizeof(PCB));
     used++;
-    printf("not freed successfully\n");
-    free(memory[used-1][0]);
-    free(memory[used-1][1]);
-    printf("freed successfully\n");
     pcb->process_id = id;
     pcb->state = NEW;
     pcb->priority = priority;
@@ -231,11 +227,13 @@ void execute_program(PCB *pcb)
 
     int pc = pcb->program_counter;
 
+    char* instruction = malloc(50*sizeof(char));
     while (pc < pcb->memory_end)
     {
         if(strcmp(((char*)memory[pc][0]),"lineOfCode") == 0){
 
-            char *instruction = (char*)memory[pc][1];
+            strcpy(instruction,memory[pc][1]);
+
             if (instruction == NULL)
             {
                 fprintf(stderr, "Error: Null instruction at pc=%d\n", pc);
@@ -250,11 +248,9 @@ void execute_program(PCB *pcb)
             {
 
                 token = strtok(NULL, "\r");
-                
-                char* output = get_variable(pcb,token);
 
                 semWait(&outputMutex, pcb);
-                printf("Output: %s\n", output);
+                printf("Output: %s\n", get_variable(pcb,token));
                 semSignal(&outputMutex, pcb);
             }
             else if (strcmp(token, "assign") == 0)
@@ -332,8 +328,10 @@ void execute_program(PCB *pcb)
                 printf("start variable: %s\n", startVar);
                 printf("end variable: %s\n", endVar);
 
-                char *start_value = get_variable(pcb, startVar);
-                char *end_value = get_variable(pcb, endVar);
+                char *start_value = malloc(10*sizeof(char));
+                char *end_value = malloc(10*sizeof(char));
+                strcpy(start_value,get_variable(pcb, startVar));
+                strcpy(end_value, get_variable(pcb, endVar));
 
                 if (start_value == NULL || end_value == NULL)
                 {
@@ -367,6 +365,8 @@ void execute_program(PCB *pcb)
                 }
                 printf("\n");
                 semSignal(&outputMutex, pcb);
+                free(start_value);
+                free(end_value);
             }
             else if (strcmp(token, "writeFile") == 0)
             {
@@ -406,6 +406,7 @@ void execute_program(PCB *pcb)
 
         pc++; // Move to the next instruction
     }
+    free(instruction);
 
     pcb->state = TERMINATED; // After execution, the process is terminated
 }
@@ -428,17 +429,15 @@ int main(){
     (&generalBlockedQueue)->size = 0;
 
     PCB* p = create_process(1,1,"Program_1.txt");
-    // printf("not freed successfully\n");
-    // free(memory[0][0]);
-    // free(memory[0][1]);
-    // printf("freed successfully\n");
     execute_program(p);
 
-    // Free dynamically allocated memory
-    // for (int i = 0; i < 60; i++){
-    //     free(memory[i][0]);
-    //     free(memory[i][1]);
-    // }
+    //Free dynamically allocated memory
+    for (int i = 0; i < 60; i++){
+        printf("%i 0\n",i);
+        free(memory[i][0]);
+        printf("%i 1\n",i);
+        free(memory[i][1]);
+    }
   
     return 0;
 }
