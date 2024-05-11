@@ -271,8 +271,11 @@ void execute_program(PCB *pcb)
                 char *variable = strtok(NULL, " "); // The variable name
                 char *value = strtok(NULL, "\r");   // The value to assign
 
+                char *valueIfReadFile = strtok(value, " ");
+
                 printf("variable: %s\n", variable);
                 printf("value: %s\n", value);
+                printf("value: %s\n", valueIfReadFile);
 
                 if (variable == NULL || value == NULL)
                 {
@@ -297,6 +300,25 @@ void execute_program(PCB *pcb)
                     }
 
                     semSignal(&inputMutex, pcb); // Unlocking user input
+                }
+                else if (strcmp(valueIfReadFile, "readFile") == 0)
+                {
+                    char *filename = strtok(NULL, "\r");
+                    char *fileNameValRead = get_variable(pcb, filename);
+
+                    semWait(&fileMutex, pcb);
+                    FILE *file = fopen(fileNameValRead, "r");
+                    if (file)
+                    {
+                        char buffer[100];
+                        while (fgets(buffer, sizeof(buffer), file))
+                        {
+                            printf("%s", buffer);
+                        }
+                        fclose(file);
+                        store_variable(pcb, variable, buffer);
+                    }
+                    semSignal(&fileMutex, pcb);
                 }
                 else
                 {
@@ -405,23 +427,6 @@ void execute_program(PCB *pcb)
                 }
                 semSignal(&fileMutex, pcb);
             }
-            else if (strcmp(token, "readFile") == 0)
-            {
-                char *filename = strtok(NULL, "\r");
-
-                semWait(&fileMutex, pcb);
-                FILE *file = fopen(filename, "r");
-                if (file)
-                {
-                    char buffer[100];
-                    while (fgets(buffer, sizeof(buffer), file))
-                    {
-                        printf("%s", buffer);
-                    }
-                    fclose(file);
-                }
-                semSignal(&fileMutex, pcb);
-            }
         }
         else
         {
@@ -453,7 +458,7 @@ int main()
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
 
-    PCB *p = create_process(1, 1, "Program_2.txt");
+    PCB *p = create_process(1, 1, "Program_3.txt");
     execute_program(p);
 
     // Free dynamically allocated memory
