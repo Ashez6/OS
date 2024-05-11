@@ -55,6 +55,9 @@ Mutex inputMutex;
 Mutex outputMutex;
 Mutex fileMutex;
 Queue generalBlockedQueue;
+Queue readyQueues[4];
+int cycle;
+
 
 void enqueue(Queue *queue, PCB *pcb)
 {
@@ -140,7 +143,7 @@ int read_program_to_memory(const char *filename)
             fprintf(stderr, "Memory overflow.\n");
             exit(EXIT_FAILURE);
         }
-        memory[used][0]= "lineOfCode";
+        strcpy((char*)memory[used][0],"lineOfCode");
         strcpy((char*)memory[used][1],buffer);
         used++;
     }
@@ -414,7 +417,7 @@ void execute_program(PCB *pcb)
 
 int main(){
     used = 0;
-    
+    cycle=0;
     for (int i = 0; i < 60; i++){
         memory[i][0] = malloc(sizeof(void*));
         memory[i][1] = malloc(sizeof(void*));
@@ -433,9 +436,7 @@ int main(){
 
     //Free dynamically allocated memory
     for (int i = 0; i < 60; i++){
-        printf("%i 0\n",i);
         free(memory[i][0]);
-        printf("%i 1\n",i);
         free(memory[i][1]);
     }
   
