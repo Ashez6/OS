@@ -10,15 +10,8 @@
 #define MAX_PROCESSES 3
 #define MAX_QUEUES 4
 
-// Quantum times for different levels
-#define QUANTUM_LVL_1 1
-#define QUANTUM_LVL_2 2
-#define QUANTUM_LVL_3 4
-#define QUANTUM_LVL_4 8
-
 typedef enum
 {
-    NEW,
     READY,
     RUNNING,
     BLOCKED,
@@ -93,18 +86,22 @@ PCB *dequeue(Queue *queue)
     return pcb;
 }
 
-void semWait(Mutex *m, PCB *p)
+int semWait(Mutex *m, PCB *p)
 {
     if (m->value == one)
     {
+        printf("pid not waiting : %i\n",p->process_id);
         m->ownerID = p->process_id;
         m->value = zero;
+        return 0;
     }
     else
     {
+        printf("pid waiting : %i\n",p->process_id);
         p->state = BLOCKED;
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
+        return 1;
     }
 }
 
@@ -117,6 +114,7 @@ void semSignal(Mutex *m, PCB *p)
         else
         {
             p->state = READY;
+            enqueue(&readyQueues[p->priority -1],p);
             dequeue(&generalBlockedQueue);
             PCB *p2 = dequeue(&(m->queue));
             m->ownerID = p2->process_id;
@@ -169,14 +167,17 @@ PCB *create_process(int id, int priority, char *functionName)
     memcpy(memory[used][1], pcb, sizeof(PCB));
     used++;
     pcb->process_id = id;
-    pcb->state = NEW;
+    pcb->state = READY;
     pcb->priority = priority;
     int start = read_program_to_memory(functionName);
     pcb->program_counter = start;
     pcb->memory_end = used + 2;
 
+    enqueue(&readyQueues[priority-1],pcb);
+
     return pcb;
 }
+
 
 char *get_variable(PCB *pcb, char *variable)
 {
@@ -225,8 +226,7 @@ void store_variable(PCB *pcb, char *variable, char *value)
     }
 }
 
-void execute_program(PCB *pcb)
-{
+void execute_program(PCB *pcb, int quantum){
     if (pcb == NULL)
     {
         fprintf(stderr, "Error: Null process control block.\n");
@@ -235,11 +235,26 @@ void execute_program(PCB *pcb)
 
     printf("Executing program for process id=%d\n", pcb->process_id);
 
+    pcb->state = RUNNING;
     int pc = pcb->program_counter;
 
+    int startingCycle = cycle;
+
     char *instruction = malloc(50 * sizeof(char));
-    while (pc < pcb->memory_end)
-    {
+    while (pc < pcb->memory_end){
+
+        if((cycle-startingCycle)==quantum){
+            int priority = pcb->priority;
+            pcb->state = READY;
+            if(priority == 4){
+                enqueue(&readyQueues[priority-1],pcb);
+            }
+            else{
+                enqueue(&readyQueues[priority],pcb);
+            }
+            return;
+        }
+
         if (strcmp(((char *)memory[pc][0]), "lineOfCode") == 0)
         {
 
@@ -259,10 +274,7 @@ void execute_program(PCB *pcb)
             {
 
                 token = strtok(NULL, "\r");
-
-                semWait(&outputMutex, pcb);
                 printf("Output: %s\n", get_variable(pcb, token));
-                semSignal(&outputMutex, pcb);
             }
             else if (strcmp(token, "assign") == 0)
             {
@@ -275,7 +287,6 @@ void execute_program(PCB *pcb)
 
                 printf("variable: %s\n", variable);
                 printf("value: %s\n", value);
-                printf("value: %s\n", valueIfReadFile);
 
                 if (variable == NULL || value == NULL)
                 {
@@ -286,7 +297,6 @@ void execute_program(PCB *pcb)
                 // If the value is "input", we ask for user input
                 if (strcmp(value, "input") == 0)
                 {
-                    semWait(&inputMutex, pcb); // Locking user input
                     printf("Please enter a value: ");
                     char user_input[50]; // Adjust the size based on expected input
                     if (fgets(user_input, sizeof(user_input), stdin) == NULL)
@@ -298,15 +308,12 @@ void execute_program(PCB *pcb)
                         user_input[strcspn(user_input, "\n")] = '\0'; // Remove newline
                         store_variable(pcb, variable, user_input);    // Store variable
                     }
-
-                    semSignal(&inputMutex, pcb); // Unlocking user input
                 }
                 else if (strcmp(valueIfReadFile, "readFile") == 0)
                 {
                     char *filename = strtok(NULL, "\r");
                     char *fileNameValRead = get_variable(pcb, filename);
 
-                    semWait(&fileMutex, pcb);
                     FILE *file = fopen(fileNameValRead, "r");
                     if (file)
                     {
@@ -318,7 +325,6 @@ void execute_program(PCB *pcb)
                         fclose(file);
                         store_variable(pcb, variable, buffer);
                     }
-                    semSignal(&fileMutex, pcb);
                 }
                 else
                 {
@@ -328,18 +334,23 @@ void execute_program(PCB *pcb)
             else if (strcmp(token, "semWait") == 0)
             {
                 char *resource = strtok(NULL, "\r");
+                int wait = 0;
 
                 if (strcmp(resource, "userOutput") == 0)
                 {
-                    semWait(&outputMutex, pcb);
+                    wait = semWait(&outputMutex, pcb);
                 }
                 else if (strcmp(resource, "userInput") == 0)
                 {
-                    semWait(&inputMutex, pcb);
+                    wait = semWait(&inputMutex, pcb);
                 }
                 else if (strcmp(resource, "file") == 0)
                 {
-                    semWait(&fileMutex, pcb);
+                    wait = semWait(&fileMutex, pcb);
+                }
+
+                if(wait){
+                    return;
                 }
             }
             else if (strcmp(token, "semSignal") == 0)
@@ -384,7 +395,6 @@ void execute_program(PCB *pcb)
                 printf("The start value is :%d\n", start);
                 printf("The end value is:%d\n", end);
 
-                semWait(&outputMutex, pcb);
 
                 int i;
 
@@ -403,7 +413,7 @@ void execute_program(PCB *pcb)
                     }
                 }
                 printf("\n");
-                semSignal(&outputMutex, pcb);
+
                 free(start_value);
                 free(end_value);
             }
@@ -418,26 +428,50 @@ void execute_program(PCB *pcb)
                 char *varVal = get_variable(pcb, content);
                 // content[strcspn(content, "\r\n")] = 0;
 
-                semWait(&fileMutex, pcb);
                 FILE *file = fopen(fileNameVal, "w");
                 if (file)
                 {
                     fprintf(file, "%s", varVal);
                     fclose(file);
                 }
-                semSignal(&fileMutex, pcb);
             }
         }
         else
         {
             break;
         }
-
-        pc++; // Move to the next instruction
+        
+        cycle++;
+        pc++;
+        pcb->program_counter = pc; // Move to the next instruction
     }
     free(instruction);
 
     pcb->state = TERMINATED; // After execution, the process is terminated
+}
+
+void run_scheduler(){
+    while(1){
+        if((&readyQueues[0])->size !=0 ){
+            PCB* p=dequeue((&readyQueues[0]));
+            execute_program(p,1);
+        }
+        else if((&readyQueues[1])->size !=0 ){
+            PCB* p=dequeue((&readyQueues[1]));
+            execute_program(p,2);
+        }
+        else if((&readyQueues[2])->size !=0 ){
+            PCB* p=dequeue((&readyQueues[2]));
+            execute_program(p,3);
+        }
+        else if((&readyQueues[3])->size !=0 ){ 
+            PCB* p=dequeue((&readyQueues[3]));
+            execute_program(p,4);
+        }
+        else{
+            break;
+        }
+    }
 }
 
 int main()
@@ -450,16 +484,37 @@ int main()
         memory[i][1] = malloc(sizeof(void *));
     }
 
+
     initialize_mutex(&inputMutex);
     initialize_mutex(&outputMutex);
     initialize_mutex(&fileMutex);
+
+    for (int i = 0; i < 4; i++)
+    {
+        (&readyQueues[i])->head = 0;
+        (&readyQueues[i])->tail = 0;
+        (&readyQueues[i])->size = 0;
+    }
+    
 
     (&generalBlockedQueue)->head = 0;
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
 
-    PCB *p = create_process(1, 1, "Program_3.txt");
-    execute_program(p);
+
+    create_process(1, 1, "Program_1.txt");
+    create_process(2, 1, "Program_2.txt");
+    create_process(3, 1, "Program_3.txt");
+
+    // for (int i = 0; i < 3 ; i++)
+    // {
+    //     printf("queue size: %i\n",(&readyQueues[0])->size);
+    //     PCB* p= dequeue(&readyQueues[0]);
+    //     printf("id: %i\n",p->process_id);
+    // }
+    
+    
+    run_scheduler();
 
     // Free dynamically allocated memory
     for (int i = 0; i < 60; i++)
