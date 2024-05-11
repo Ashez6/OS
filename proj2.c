@@ -35,29 +35,33 @@ typedef struct
     int memory_end;
 } PCB;
 
-
-typedef struct {
+typedef struct
+{
     int head;
     int tail;
     int size;
     PCB *queue[MAX_PROCESSES];
 } Queue;
 
-typedef struct {
-    enum {zero,one} value;
+typedef struct
+{
+    enum
+    {
+        zero,
+        one
+    } value;
     Queue queue;
     int ownerID;
-}Mutex;
+} Mutex;
 
-void* memory[60][2];
-int used=0;
+void *memory[60][2];
+int used = 0;
 Mutex inputMutex;
 Mutex outputMutex;
 Mutex fileMutex;
 Queue generalBlockedQueue;
 Queue readyQueues[4];
 int cycle;
-
 
 void enqueue(Queue *queue, PCB *pcb)
 {
@@ -89,37 +93,40 @@ PCB *dequeue(Queue *queue)
     return pcb;
 }
 
-void semWait(Mutex *m , PCB *p) {
-    if (m->value == one) {
+void semWait(Mutex *m, PCB *p)
+{
+    if (m->value == one)
+    {
         m->ownerID = p->process_id;
         m->value = zero;
-    } else {
+    }
+    else
+    {
         p->state = BLOCKED;
-        enqueue(&(m->queue),p);
-        enqueue(&generalBlockedQueue,p);
+        enqueue(&(m->queue), p);
+        enqueue(&generalBlockedQueue, p);
     }
 }
 
-
-void semSignal(Mutex *m, PCB *p) {
-    if(m->ownerID == p->process_id) {
-        if ((&(m->queue))->size==0)
+void semSignal(Mutex *m, PCB *p)
+{
+    if (m->ownerID == p->process_id)
+    {
+        if ((&(m->queue))->size == 0)
             m->value = one;
-        else {
+        else
+        {
             p->state = READY;
             dequeue(&generalBlockedQueue);
-            PCB* p2 = dequeue(&(m->queue));
+            PCB *p2 = dequeue(&(m->queue));
             m->ownerID = p2->process_id;
         }
     }
 }
 
-
-
-
 void initialize_mutex(Mutex *mutex)
 {
-    mutex->value=one;
+    mutex->value = one;
     (&(mutex->queue))->head = 0;
     (&(mutex->queue))->tail = 0;
     (&(mutex->queue))->size = 0;
@@ -143,43 +150,41 @@ int read_program_to_memory(const char *filename)
             fprintf(stderr, "Memory overflow.\n");
             exit(EXIT_FAILURE);
         }
-        strcpy((char*)memory[used][0],"lineOfCode");
-        strcpy((char*)memory[used][1],buffer);
+        strcpy((char *)memory[used][0], "lineOfCode");
+        strcpy((char *)memory[used][1], buffer);
         used++;
     }
-    strcat((char*)memory[used-1][1],"\r\n");
+    strcat((char *)memory[used - 1][1], "\r\n");
 
     fclose(file);
-    
+
     return start; // Returns the start index in memory
 }
 
-
-PCB *create_process(int id, int priority, char* functionName)
+PCB *create_process(int id, int priority, char *functionName)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
     pcb->memory_start = used;
-    strcpy(memory[used][0],"PCB");
-    memcpy(memory[used][1],pcb,sizeof(PCB));
+    strcpy(memory[used][0], "PCB");
+    memcpy(memory[used][1], pcb, sizeof(PCB));
     used++;
     pcb->process_id = id;
     pcb->state = NEW;
     pcb->priority = priority;
     int start = read_program_to_memory(functionName);
     pcb->program_counter = start;
-    pcb->memory_end = used+2;
-
+    pcb->memory_end = used + 2;
 
     return pcb;
 }
 
-
-char *get_variable( PCB *pcb, char *variable)
+char *get_variable(PCB *pcb, char *variable)
 {
     // Loop through the process's memory range
-    for (int i = pcb->memory_start; i < pcb->memory_end; i++){
+    for (int i = pcb->memory_start; i < pcb->memory_end; i++)
+    {
         if (strcmp(memory[i][0], variable) == 0)
-        {                        
+        {
             return memory[i][1];
         }
     }
@@ -199,22 +204,24 @@ void store_variable(PCB *pcb, char *variable, char *value)
         if (strcmp(memory[i][0], variable) == 0)
         {
             strcpy(memory[i][1], value); // Store the new value
-            found = 1;                          // Mark that the variable was found
+            found = 1;                   // Mark that the variable was found
             break;
         }
     }
 
     // If variable was not found, add it to memory
-    if (!found){
-        for (int i = pcb->memory_end-2 ; i <= pcb->memory_end; i++){
-            //printf("mem location %i",((char*)memory[i][0]);
-            if(*(int*)memory[i][0] == 0){
+    if (!found)
+    {
+        for (int i = pcb->memory_end - 2; i <= pcb->memory_end; i++)
+        {
+            // printf("mem location %i",((char*)memory[i][0]);
+            if (*(int *)memory[i][0] == 0)
+            {
                 strcpy(memory[i][0], variable);
                 strcpy(memory[i][1], value);
                 break;
             }
         }
-        
     }
 }
 
@@ -230,12 +237,13 @@ void execute_program(PCB *pcb)
 
     int pc = pcb->program_counter;
 
-    char* instruction = malloc(50*sizeof(char));
+    char *instruction = malloc(50 * sizeof(char));
     while (pc < pcb->memory_end)
     {
-        if(strcmp(((char*)memory[pc][0]),"lineOfCode") == 0){
+        if (strcmp(((char *)memory[pc][0]), "lineOfCode") == 0)
+        {
 
-            strcpy(instruction,memory[pc][1]);
+            strcpy(instruction, memory[pc][1]);
 
             if (instruction == NULL)
             {
@@ -253,15 +261,15 @@ void execute_program(PCB *pcb)
                 token = strtok(NULL, "\r");
 
                 semWait(&outputMutex, pcb);
-                printf("Output: %s\n", get_variable(pcb,token));
+                printf("Output: %s\n", get_variable(pcb, token));
                 semSignal(&outputMutex, pcb);
             }
             else if (strcmp(token, "assign") == 0)
             {
-                
+
                 printf("Entered assign \n");
                 char *variable = strtok(NULL, " "); // The variable name
-                char *value = strtok(NULL, "\r");    // The value to assign
+                char *value = strtok(NULL, "\r");   // The value to assign
 
                 printf("variable: %s\n", variable);
                 printf("value: %s\n", value);
@@ -284,8 +292,8 @@ void execute_program(PCB *pcb)
                     }
                     else
                     {
-                        user_input[strcspn(user_input, "\n")] = '\0';                // Remove newline
-                        store_variable(pcb, variable, user_input); // Store variable
+                        user_input[strcspn(user_input, "\n")] = '\0'; // Remove newline
+                        store_variable(pcb, variable, user_input);    // Store variable
                     }
 
                     semSignal(&inputMutex, pcb); // Unlocking user input
@@ -299,13 +307,16 @@ void execute_program(PCB *pcb)
             {
                 char *resource = strtok(NULL, "\r");
 
-                if (strcmp(resource, "userOutput") == 0){
+                if (strcmp(resource, "userOutput") == 0)
+                {
                     semWait(&outputMutex, pcb);
                 }
-                else if (strcmp(resource, "userInput") == 0){
+                else if (strcmp(resource, "userInput") == 0)
+                {
                     semWait(&inputMutex, pcb);
                 }
-                else if (strcmp(resource, "file") == 0){
+                else if (strcmp(resource, "file") == 0)
+                {
                     semWait(&fileMutex, pcb);
                 }
             }
@@ -313,13 +324,16 @@ void execute_program(PCB *pcb)
             {
                 char *resource = strtok(NULL, "\r");
 
-                if (strcmp(resource, "userOutput") == 0){
+                if (strcmp(resource, "userOutput") == 0)
+                {
                     semSignal(&outputMutex, pcb);
                 }
-                else if (strcmp(resource, "userInput") == 0){
-                    semSignal(&inputMutex,pcb);
+                else if (strcmp(resource, "userInput") == 0)
+                {
+                    semSignal(&inputMutex, pcb);
                 }
-                else if (strcmp(resource, "file") == 0){
+                else if (strcmp(resource, "file") == 0)
+                {
                     semSignal(&fileMutex, pcb);
                 }
             }
@@ -331,9 +345,9 @@ void execute_program(PCB *pcb)
                 printf("start variable: %s\n", startVar);
                 printf("end variable: %s\n", endVar);
 
-                char *start_value = malloc(10*sizeof(char));
-                char *end_value = malloc(10*sizeof(char));
-                strcpy(start_value,get_variable(pcb, startVar));
+                char *start_value = malloc(10 * sizeof(char));
+                char *end_value = malloc(10 * sizeof(char));
+                strcpy(start_value, get_variable(pcb, startVar));
                 strcpy(end_value, get_variable(pcb, endVar));
 
                 if (start_value == NULL || end_value == NULL)
@@ -373,14 +387,20 @@ void execute_program(PCB *pcb)
             }
             else if (strcmp(token, "writeFile") == 0)
             {
-                char *filename = strtok(NULL, " ");
-                char *content = strtok(NULL, "\r");
+                char *filename = strtok(NULL, " "); // Filename
+                char *content = strtok(NULL, "\r"); // Variable
+
+                // char *get_variable(PCB *pcb, char *variable)
+
+                char *fileNameVal = get_variable(pcb, filename);
+                char *varVal = get_variable(pcb, content);
+                // content[strcspn(content, "\r\n")] = 0;
 
                 semWait(&fileMutex, pcb);
-                FILE *file = fopen(filename, "w");
+                FILE *file = fopen(fileNameVal, "w");
                 if (file)
                 {
-                    fprintf(file, "%s", content);
+                    fprintf(file, "%s", varVal);
                     fclose(file);
                 }
                 semSignal(&fileMutex, pcb);
@@ -403,7 +423,8 @@ void execute_program(PCB *pcb)
                 semSignal(&fileMutex, pcb);
             }
         }
-        else{
+        else
+        {
             break;
         }
 
@@ -414,13 +435,14 @@ void execute_program(PCB *pcb)
     pcb->state = TERMINATED; // After execution, the process is terminated
 }
 
-
-int main(){
+int main()
+{
     used = 0;
-    cycle=0;
-    for (int i = 0; i < 60; i++){
-        memory[i][0] = malloc(sizeof(void*));
-        memory[i][1] = malloc(sizeof(void*));
+    cycle = 0;
+    for (int i = 0; i < 60; i++)
+    {
+        memory[i][0] = malloc(sizeof(void *));
+        memory[i][1] = malloc(sizeof(void *));
     }
 
     initialize_mutex(&inputMutex);
@@ -431,14 +453,15 @@ int main(){
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
 
-    PCB* p = create_process(1,1,"Program_1.txt");
+    PCB *p = create_process(1, 1, "Program_2.txt");
     execute_program(p);
 
-    //Free dynamically allocated memory
-    for (int i = 0; i < 60; i++){
+    // Free dynamically allocated memory
+    for (int i = 0; i < 60; i++)
+    {
         free(memory[i][0]);
         free(memory[i][1]);
     }
-  
+
     return 0;
 }

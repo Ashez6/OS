@@ -497,16 +497,19 @@ void execute_program(ProcessControlBlock *pcb, Memory *memory, Mutex *user_outpu
         }
         else if (strcmp(token, "writeFile") == 0)
         {
-            char *filename = strtok(NULL, " ");
-            char *content = strtok(NULL, " ");
+            char *filename = strtok(NULL, " "); // Filename
+            char *content = strtok(NULL, " ");  // Variable
 
+            // char *get_variable(PCB *pcb, char *variable)
+
+            char *varVal = get_variable_value(pcb, content);
             // content[strcspn(content, "\r\n")] = 0;
 
             semWait(file_mutex, pcb, general_blocked_queue);
             FILE *file = fopen(filename, "w");
             if (file)
             {
-                fprintf(file, "%s", content);
+                fprintf(file, "%s", varVal);
                 fclose(file);
             }
             semSignal(file_mutex, ready_queues, 4);
