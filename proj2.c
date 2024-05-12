@@ -90,14 +90,14 @@ int semWait(Mutex *m, PCB *p)
 {
     if (m->value == one)
     {
-        printf("pid not waiting : %i\n",p->process_id);
+        printf("pid not waiting : %i\n", p->process_id);
         m->ownerID = p->process_id;
         m->value = zero;
         return 0;
     }
     else
     {
-        printf("pid waiting : %i\n",p->process_id);
+        printf("pid waiting : %i\n", p->process_id);
         p->state = BLOCKED;
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
@@ -114,7 +114,7 @@ void semSignal(Mutex *m, PCB *p)
         else
         {
             p->state = READY;
-            enqueue(&readyQueues[p->priority -1],p);
+            enqueue(&readyQueues[p->priority - 1], p);
             dequeue(&generalBlockedQueue);
             PCB *p2 = dequeue(&(m->queue));
             m->ownerID = p2->process_id;
@@ -162,6 +162,8 @@ int read_program_to_memory(const char *filename)
 PCB *create_process(int id, int priority, char *functionName)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
+    printf("Used: %i \n", used);
+
     pcb->memory_start = used;
     strcpy(memory[used][0], "PCB");
     memcpy(memory[used][1], pcb, sizeof(PCB));
@@ -173,11 +175,11 @@ PCB *create_process(int id, int priority, char *functionName)
     pcb->program_counter = start;
     pcb->memory_end = used + 2;
 
-    enqueue(&readyQueues[priority-1],pcb);
+    enqueue(&readyQueues[priority - 1], pcb);
+    used += 3;
 
     return pcb;
 }
-
 
 char *get_variable(PCB *pcb, char *variable)
 {
@@ -215,18 +217,22 @@ void store_variable(PCB *pcb, char *variable, char *value)
     {
         for (int i = pcb->memory_end - 2; i <= pcb->memory_end; i++)
         {
-            // printf("mem location %i",((char*)memory[i][0]);
+            printf("mem location %i\n", *(int *)memory[i][0]);
             if (*(int *)memory[i][0] == 0)
             {
                 strcpy(memory[i][0], variable);
                 strcpy(memory[i][1], value);
+                printf("Here var  %s\n", ((char *)memory[i][0]));
+                printf("Here val %s\n", ((char *)memory[i][1]));
+
                 break;
             }
         }
     }
 }
 
-void execute_program(PCB *pcb, int quantum){
+void execute_program(PCB *pcb, int quantum)
+{
     if (pcb == NULL)
     {
         fprintf(stderr, "Error: Null process control block.\n");
@@ -241,16 +247,20 @@ void execute_program(PCB *pcb, int quantum){
     int startingCycle = cycle;
 
     char *instruction = malloc(50 * sizeof(char));
-    while (pc < pcb->memory_end){
+    while (pc < pcb->memory_end)
+    {
 
-        if((cycle-startingCycle)==quantum){
+        if ((cycle - startingCycle) == quantum)
+        {
             int priority = pcb->priority;
             pcb->state = READY;
-            if(priority == 4){
-                enqueue(&readyQueues[priority-1],pcb);
+            if (priority == 4)
+            {
+                enqueue(&readyQueues[priority - 1], pcb);
             }
-            else{
-                enqueue(&readyQueues[priority],pcb);
+            else
+            {
+                enqueue(&readyQueues[priority], pcb);
             }
             return;
         }
@@ -349,7 +359,8 @@ void execute_program(PCB *pcb, int quantum){
                     wait = semWait(&fileMutex, pcb);
                 }
 
-                if(wait){
+                if (wait)
+                {
                     return;
                 }
             }
@@ -395,7 +406,6 @@ void execute_program(PCB *pcb, int quantum){
                 printf("The start value is :%d\n", start);
                 printf("The end value is:%d\n", end);
 
-
                 int i;
 
                 if (start <= end)
@@ -440,7 +450,7 @@ void execute_program(PCB *pcb, int quantum){
         {
             break;
         }
-        
+
         cycle++;
         pc++;
         pcb->program_counter = pc; // Move to the next instruction
@@ -450,25 +460,32 @@ void execute_program(PCB *pcb, int quantum){
     pcb->state = TERMINATED; // After execution, the process is terminated
 }
 
-void run_scheduler(){
-    while(1){
-        if((&readyQueues[0])->size !=0 ){
-            PCB* p=dequeue((&readyQueues[0]));
-            execute_program(p,1);
+void run_scheduler()
+{
+    while (1)
+    {
+        if ((&readyQueues[0])->size != 0)
+        {
+            PCB *p = dequeue((&readyQueues[0]));
+            execute_program(p, 1);
         }
-        else if((&readyQueues[1])->size !=0 ){
-            PCB* p=dequeue((&readyQueues[1]));
-            execute_program(p,2);
+        else if ((&readyQueues[1])->size != 0)
+        {
+            PCB *p = dequeue((&readyQueues[1]));
+            execute_program(p, 2);
         }
-        else if((&readyQueues[2])->size !=0 ){
-            PCB* p=dequeue((&readyQueues[2]));
-            execute_program(p,3);
+        else if ((&readyQueues[2])->size != 0)
+        {
+            PCB *p = dequeue((&readyQueues[2]));
+            execute_program(p, 3);
         }
-        else if((&readyQueues[3])->size !=0 ){ 
-            PCB* p=dequeue((&readyQueues[3]));
-            execute_program(p,4);
+        else if ((&readyQueues[3])->size != 0)
+        {
+            PCB *p = dequeue((&readyQueues[3]));
+            execute_program(p, 4);
         }
-        else{
+        else
+        {
             break;
         }
     }
@@ -484,7 +501,6 @@ int main()
         memory[i][1] = malloc(sizeof(void *));
     }
 
-
     initialize_mutex(&inputMutex);
     initialize_mutex(&outputMutex);
     initialize_mutex(&fileMutex);
@@ -495,12 +511,10 @@ int main()
         (&readyQueues[i])->tail = 0;
         (&readyQueues[i])->size = 0;
     }
-    
 
     (&generalBlockedQueue)->head = 0;
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
-
 
     create_process(1, 1, "Program_1.txt");
     create_process(2, 1, "Program_2.txt");
@@ -512,8 +526,7 @@ int main()
     //     PCB* p= dequeue(&readyQueues[0]);
     //     printf("id: %i\n",p->process_id);
     // }
-    
-    
+
     run_scheduler();
 
     // Free dynamically allocated memory
