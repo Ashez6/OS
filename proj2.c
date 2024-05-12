@@ -90,14 +90,14 @@ int semWait(Mutex *m, PCB *p)
 {
     if (m->value == one)
     {
-        printf("pid not waiting : %i\n", p->process_id);
+        printf("PID not waiting : %i\n", p->process_id);
         m->ownerID = p->process_id;
         m->value = zero;
         return 0;
     }
     else
     {
-        printf("pid waiting : %i\n", p->process_id);
+        printf("PID waiting : %i\n", p->process_id);
         p->state = BLOCKED;
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
@@ -113,11 +113,12 @@ void semSignal(Mutex *m, PCB *p)
             m->value = one;
         else
         {
-            p->state = READY;
-            enqueue(&readyQueues[p->priority - 1], p);
             dequeue(&generalBlockedQueue);
             PCB *p2 = dequeue(&(m->queue));
+            p2->state = READY;
+            enqueue(&readyQueues[p2->priority - 1], p2);
             m->ownerID = p2->process_id;
+            printf("Owner ID: %i\n", m->ownerID);
         }
     }
 }
@@ -260,6 +261,7 @@ void execute_program(PCB *pcb, int quantum)
             }
             else
             {
+                pcb->priority = pcb->priority + 1;
                 enqueue(&readyQueues[priority], pcb);
             }
             return;
@@ -361,6 +363,16 @@ void execute_program(PCB *pcb, int quantum)
 
                 if (wait)
                 {
+                    cycle++;
+                    if ((cycle - startingCycle) == quantum)
+                    {
+                        if ((pcb->priority < 4))
+                        {
+                            pcb->priority = pcb->priority + 1;
+                        }
+                    }
+                    pc++;
+                    pcb->program_counter = pc; // Move to the next instruction
                     return;
                 }
             }
