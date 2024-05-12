@@ -47,13 +47,13 @@ typedef struct
     int ownerID;
 } Mutex;
 
-void *memory[60][2];
+void *memory[MEMORY_SIZE][2];
 int used = 0;
 Mutex inputMutex;
 Mutex outputMutex;
 Mutex fileMutex;
 Queue generalBlockedQueue;
-Queue readyQueues[4];
+Queue readyQueues[MAX_QUEUES];
 int cycle;
 
 void enqueue(Queue *queue, PCB *pcb)
@@ -118,7 +118,7 @@ void semSignal(Mutex *m, PCB *p)
             p2->state = READY;
             enqueue(&readyQueues[p2->priority - 1], p2);
             m->ownerID = p2->process_id;
-            printf("Owner ID: %i\n", m->ownerID);
+            printf("New owner ID: %i\n", m->ownerID);
         }
     }
 }
@@ -163,8 +163,6 @@ int read_program_to_memory(const char *filename)
 PCB *create_process(int id, int priority, char *functionName)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
-    printf("Used: %i \n", used);
-
     pcb->memory_start = used;
     strcpy(memory[used][0], "PCB");
     memcpy(memory[used][1], pcb, sizeof(PCB));
@@ -218,14 +216,10 @@ void store_variable(PCB *pcb, char *variable, char *value)
     {
         for (int i = pcb->memory_end - 2; i <= pcb->memory_end; i++)
         {
-            printf("mem location %i\n", *(int *)memory[i][0]);
             if (*(int *)memory[i][0] == 0)
             {
                 strcpy(memory[i][0], variable);
                 strcpy(memory[i][1], value);
-                printf("Here var  %s\n", ((char *)memory[i][0]));
-                printf("Here val %s\n", ((char *)memory[i][1]));
-
                 break;
             }
         }
@@ -332,7 +326,7 @@ void execute_program(PCB *pcb, int quantum)
                         char buffer[100];
                         while (fgets(buffer, sizeof(buffer), file))
                         {
-                            printf("%s", buffer);
+                            // printf("%s\n", buffer);
                         }
                         fclose(file);
                         store_variable(pcb, variable, buffer);
@@ -415,8 +409,8 @@ void execute_program(PCB *pcb, int quantum)
                 int start = atoi(start_value);
                 int end = atoi(end_value);
 
-                printf("The start value is :%d\n", start);
-                printf("The end value is:%d\n", end);
+                printf("The start value is: %d\n", start);
+                printf("The end value is: %d\n", end);
 
                 int i;
 
@@ -507,7 +501,7 @@ int main()
 {
     used = 0;
     cycle = 0;
-    for (int i = 0; i < 60; i++)
+    for (int i = 0; i < MEMORY_SIZE; i++)
     {
         memory[i][0] = malloc(sizeof(void *));
         memory[i][1] = malloc(sizeof(void *));
@@ -542,7 +536,7 @@ int main()
     run_scheduler();
 
     // Free dynamically allocated memory
-    for (int i = 0; i < 60; i++)
+    for (int i = 0; i < MEMORY_SIZE; i++)
     {
         free(memory[i][0]);
         free(memory[i][1]);
