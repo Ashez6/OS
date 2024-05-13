@@ -47,7 +47,13 @@ typedef struct
     int ownerID;
 } Mutex;
 
-void *memory[MEMORY_SIZE][2];
+typedef struct
+{
+    char* name;
+    void* data;
+} Element;
+
+Element* memory;
 int used = 0;
 Mutex inputMutex;
 Mutex outputMutex;
@@ -162,11 +168,11 @@ int read_program_to_memory(const char *filename)
             fprintf(stderr, "Memory overflow.\n");
             exit(EXIT_FAILURE);
         }
-        strcpy((char *)memory[used][0], "lineOfCode");
-        strcpy((char *)memory[used][1], buffer);
+        strcpy((&memory[used])->name, "lineOfCode");
+        strcpy((&memory[used])->data, buffer);
         used++;
     }
-    strcat((char *)memory[used - 1][1], "\r\n");
+    strcat((&memory[used - 1])->data, "\r\n");
 
     fclose(file);
 
@@ -177,8 +183,8 @@ PCB *create_process(int id, int priority, char *functionName)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
     pcb->memory_start = used;
-    strcpy(memory[used][0], "PCB");
-    memcpy(memory[used][1], pcb, sizeof(PCB));
+    strcpy((&memory[used])->name, "PCB");
+    memcpy((&memory[used])->data, pcb, sizeof(PCB));
     used++;
     pcb->process_id = id;
     pcb->state = READY;
@@ -189,7 +195,7 @@ PCB *create_process(int id, int priority, char *functionName)
 
     enqueue(&readyQueues[priority - 1], pcb);
     used += 3;
-
+    
     return pcb;
 }
 
@@ -198,9 +204,9 @@ char *get_variable(PCB *pcb, char *variable)
     // Loop through the process's memory range
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-        if (strcmp(memory[i][0], variable) == 0)
+        if (strcmp((&memory[i])->name, variable) == 0)
         {
-            return memory[i][1];
+            return (&memory[i])->data;
         }
     }
 
@@ -216,9 +222,9 @@ void store_variable(PCB *pcb, char *variable, char *value)
     // Check if the variable already exists
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
-        if (strcmp(memory[i][0], variable) == 0)
+        if (strcmp((&memory[i])->name, variable) == 0)
         {
-            strcpy(memory[i][1], value); // Store the new value
+            strcpy((&memory[i])->data, value); // Store the new value
             found = 1;                   // Mark that the variable was found
             break;
         }
@@ -229,10 +235,10 @@ void store_variable(PCB *pcb, char *variable, char *value)
     {
         for (int i = pcb->memory_end - 2; i <= pcb->memory_end; i++)
         {
-            if (*(int *)memory[i][0] == 0)
+            if (*(int *)(&memory[i])->name == 0)
             {
-                strcpy(memory[i][0], variable);
-                strcpy(memory[i][1], value);
+                strcpy((&memory[i])->name, variable);
+                strcpy((&memory[i])->data, value);
                 break;
             }
         }
@@ -274,10 +280,10 @@ void execute_program(PCB *pcb, int quantum)
             return;
         }
 
-        if (strcmp(((char *)memory[pc][0]), "lineOfCode") == 0)
+        if (strcmp((&memory[pc])->name, "lineOfCode") == 0)
         {
 
-            strcpy(instruction, memory[pc][1]);
+            strcpy(instruction, (&memory[pc])->data);
 
             if (instruction == NULL)
             {
@@ -514,10 +520,13 @@ int main()
 {
     used = 0;
     cycle = 0;
+    
+    memory = (Element*)malloc(MEMORY_SIZE * sizeof(Element));
+
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
-        memory[i][0] = malloc(100);
-        memory[i][1] = malloc(100);
+        (&memory[i])->name = (char*)malloc(100*sizeof(char));
+        (&memory[i])->data = malloc(100);
     }
 
     initialize_mutex(&inputMutex);
@@ -541,12 +550,12 @@ int main()
 
     run_scheduler();
 
-    // Free dynamically allocated memory
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
-        free(memory[i][0]);
-        free(memory[i][1]);
+        free((&memory[i])->data);
+        free((&memory[i])->name);
     }
+
 
     return 0;
 }
