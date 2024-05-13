@@ -16,8 +16,8 @@ int main()
     char str[20];
     char str1[20] = "a";
 
-    sprintf(str + strlen(str), "%d", pid, str1);
 
     printf("%s", str);
+    printf("%li",sizeof(void*));
     return 0;
 }

@@ -113,10 +113,23 @@ void semSignal(Mutex *m, PCB *p)
             m->value = one;
         else
         {
-            dequeue(&generalBlockedQueue);
             PCB *p2 = dequeue(&(m->queue));
             p2->state = READY;
             enqueue(&readyQueues[p2->priority - 1], p2);
+
+            int size = (&generalBlockedQueue)->size;
+            for (int i = 0; i < size ; i++)
+            {
+                PCB *p3 = dequeue((&generalBlockedQueue));
+                if(p3->process_id == p2->process_id){
+                    break;
+                }
+                else{
+                    enqueue((&generalBlockedQueue),p3);
+                }
+
+            }
+
             m->ownerID = p2->process_id;
             printf("New owner ID: %i\n", m->ownerID);
         }
@@ -304,7 +317,7 @@ void execute_program(PCB *pcb, int quantum)
                 if (strcmp(value, "input") == 0)
                 {
                     printf("Please enter a value: ");
-                    char user_input[50]; // Adjust the size based on expected input
+                    char user_input[100]; // Adjust the size based on expected input
                     if (fgets(user_input, sizeof(user_input), stdin) == NULL)
                     {
                         fprintf(stderr, "Error: Failed to read user input.\n");
@@ -503,8 +516,8 @@ int main()
     cycle = 0;
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
-        memory[i][0] = malloc(sizeof(void *));
-        memory[i][1] = malloc(sizeof(void *));
+        memory[i][0] = malloc(100);
+        memory[i][1] = malloc(100);
     }
 
     initialize_mutex(&inputMutex);
@@ -525,13 +538,6 @@ int main()
     create_process(1, 1, "Program_1.txt");
     create_process(2, 1, "Program_2.txt");
     create_process(3, 1, "Program_3.txt");
-
-    // for (int i = 0; i < 3 ; i++)
-    // {
-    //     printf("queue size: %i\n",(&readyQueues[0])->size);
-    //     PCB* p= dequeue(&readyQueues[0]);
-    //     printf("id: %i\n",p->process_id);
-    // }
 
     run_scheduler();
 
