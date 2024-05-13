@@ -62,6 +62,22 @@ Queue generalBlockedQueue;
 Queue readyQueues[MAX_QUEUES];
 int cycle;
 
+
+void print_PCB(PCB *pcb) {
+    if (pcb == NULL) {
+        fprintf(stderr, "Error: Null PCB pointer.\n");
+        return;
+    }
+
+    printf("PCB : ");
+    printf("Process ID: %d, ", pcb->process_id);
+    printf("State: %d, ", pcb->state);
+    printf("Priority: %d, ", pcb->priority);
+    printf("Program Counter: %d, ", pcb->program_counter);
+    printf("Memory Start: %d, ", pcb->memory_start);
+    printf("Memory End: %d\n", pcb->memory_end);
+}
+
 void enqueue(Queue *queue, PCB *pcb)
 {
     if (queue->size >= MAX_PROCESSES)
@@ -92,21 +108,48 @@ PCB *dequeue(Queue *queue)
     return pcb;
 }
 
+void print_queue(Queue *queue) {
+    if (queue == NULL) {
+        fprintf(stderr, "Error: Null queue pointer.\n");
+        return;
+    }
+
+
+    for (int i = 0; i<queue->size; i++ ) {
+        PCB* p =  dequeue(queue);
+        print_PCB(p);
+        enqueue(queue,p);
+    }
+    printf("\n");
+}
+
+
 int semWait(Mutex *m, PCB *p)
 {
     if (m->value == one)
     {
-        printf("PID not waiting : %i\n", p->process_id);
         m->ownerID = p->process_id;
         m->value = zero;
         return 0;
     }
     else
     {
-        printf("PID waiting : %i\n", p->process_id);
+
         p->state = BLOCKED;
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
+
+        printf("Proccess id %i blocked\n",p->process_id);
+        printf("Ready queue 1 content:\n");
+        print_queue(&readyQueues[0]);
+        printf("Ready queue 2 content:\n");
+        print_queue(&readyQueues[1]);
+        printf("Ready queue 3 content:\n");
+        print_queue(&readyQueues[2]);
+        printf("Ready queue 4 content:\n");
+        print_queue(&readyQueues[3]);
+        printf("Blocked queue content:\n");
+        print_queue(&generalBlockedQueue);
         return 1;
     }
 }
@@ -137,7 +180,17 @@ void semSignal(Mutex *m, PCB *p)
             }
 
             m->ownerID = p2->process_id;
-            printf("New owner ID: %i\n", m->ownerID);
+            printf("Proccess id %i unblocked\n",p2->process_id);
+            printf("Ready queue 1 content:\n");
+            print_queue(&readyQueues[0]);
+            printf("Ready queue 2 content:\n");
+            print_queue(&readyQueues[1]);
+            printf("Ready queue 3 content:\n");
+            print_queue(&readyQueues[2]);
+            printf("Ready queue 4 content:\n");
+            print_queue(&readyQueues[3]);
+            printf("Blocked queue content:\n");
+            print_queue(&generalBlockedQueue);
         }
     }
 }
@@ -253,8 +306,19 @@ void execute_program(PCB *pcb, int quantum)
         return;
     }
 
-    printf("Executing program for process id=%d\n", pcb->process_id);
+    printf("\nExecuting program for process id=%d\n", pcb->process_id);
 
+
+    printf("Ready queue 1 content:\n");
+    print_queue(&readyQueues[0]);
+    printf("Ready queue 2 content:\n");
+    print_queue(&readyQueues[1]);
+    printf("Ready queue 3 content:\n");
+    print_queue(&readyQueues[2]);
+    printf("Ready queue 4 content:\n");
+    print_queue(&readyQueues[3]);
+    printf("Blocked queue content:\n");
+    print_queue(&generalBlockedQueue); 
     pcb->state = RUNNING;
     int pc = pcb->program_counter;
 
@@ -483,6 +547,17 @@ void execute_program(PCB *pcb, int quantum)
     free(instruction);
 
     pcb->state = TERMINATED; // After execution, the process is terminated
+    printf("Process id %i terminated\n",pcb->process_id);
+    printf("Ready queue 1 content:\n");
+    print_queue(&readyQueues[0]);
+    printf("Ready queue 2 content:\n");
+    print_queue(&readyQueues[1]);
+    printf("Ready queue 3 content:\n");
+    print_queue(&readyQueues[2]);
+    printf("Ready queue 4 content:\n");
+    print_queue(&readyQueues[3]);
+    printf("Blocked queue content:\n");
+    print_queue(&generalBlockedQueue);
 }
 
 void run_scheduler()
