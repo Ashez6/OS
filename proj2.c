@@ -49,11 +49,11 @@ typedef struct
 
 typedef struct
 {
-    char* name;
-    void* data;
+    char *name;
+    void *data;
 } Element;
 
-Element* memory;
+Element *memory;
 int used = 0;
 Mutex inputMutex;
 Mutex outputMutex;
@@ -61,17 +61,36 @@ Mutex fileMutex;
 Queue generalBlockedQueue;
 Queue readyQueues[MAX_QUEUES];
 int cycle;
+void printMemoryPCB(PCB *pcb);
 
-
-void print_PCB(PCB *pcb) {
-    if (pcb == NULL) {
+void print_PCB(PCB *pcb)
+{
+    if (pcb == NULL)
+    {
         fprintf(stderr, "Error: Null PCB pointer.\n");
         return;
     }
 
     printf("PCB : ");
     printf("Process ID: %d, ", pcb->process_id);
-    printf("State: %d, ", pcb->state);
+    switch (pcb->state)
+    {
+    case READY:
+        printf("State: READY, ");
+        break;
+    case RUNNING:
+        printf("State: RUNNING, ");
+        break;
+    case BLOCKED:
+        printf("State: BLOCKED, ");
+        break;
+    case TERMINATED:
+        printf("State: TERMINATED, ");
+        break;
+    default:
+        printf("State: UNKNOWN, ");
+        break;
+    }
     printf("Priority: %d, ", pcb->priority);
     printf("Program Counter: %d, ", pcb->program_counter);
     printf("Memory Start: %d, ", pcb->memory_start);
@@ -108,21 +127,22 @@ PCB *dequeue(Queue *queue)
     return pcb;
 }
 
-void print_queue(Queue *queue) {
-    if (queue == NULL) {
+void print_queue(Queue *queue)
+{
+    if (queue == NULL)
+    {
         fprintf(stderr, "Error: Null queue pointer.\n");
         return;
     }
 
-
-    for (int i = 0; i<queue->size; i++ ) {
-        PCB* p =  dequeue(queue);
+    for (int i = 0; i < queue->size; i++)
+    {
+        PCB *p = dequeue(queue);
         print_PCB(p);
-        enqueue(queue,p);
+        enqueue(queue, p);
     }
     printf("\n");
 }
-
 
 int semWait(Mutex *m, PCB *p)
 {
@@ -139,7 +159,7 @@ int semWait(Mutex *m, PCB *p)
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
 
-        printf("Proccess id %i blocked\n",p->process_id);
+        printf("Proccess id %i blocked\n", p->process_id);
         printf("Ready queue 1 content:\n");
         print_queue(&readyQueues[0]);
         printf("Ready queue 2 content:\n");
@@ -167,20 +187,21 @@ void semSignal(Mutex *m, PCB *p)
             enqueue(&readyQueues[p2->priority - 1], p2);
 
             int size = (&generalBlockedQueue)->size;
-            for (int i = 0; i < size ; i++)
+            for (int i = 0; i < size; i++)
             {
                 PCB *p3 = dequeue((&generalBlockedQueue));
-                if(p3->process_id == p2->process_id){
+                if (p3->process_id == p2->process_id)
+                {
                     break;
                 }
-                else{
-                    enqueue((&generalBlockedQueue),p3);
+                else
+                {
+                    enqueue((&generalBlockedQueue), p3);
                 }
-
             }
 
             m->ownerID = p2->process_id;
-            printf("Proccess id %i unblocked\n",p2->process_id);
+            printf("Proccess id %i unblocked\n", p2->process_id);
             printf("Ready queue 1 content:\n");
             print_queue(&readyQueues[0]);
             printf("Ready queue 2 content:\n");
@@ -248,7 +269,7 @@ PCB *create_process(int id, int priority, char *functionName)
 
     enqueue(&readyQueues[priority - 1], pcb);
     used += 3;
-    
+
     return pcb;
 }
 
@@ -278,7 +299,7 @@ void store_variable(PCB *pcb, char *variable, char *value)
         if (strcmp((&memory[i])->name, variable) == 0)
         {
             strcpy((&memory[i])->data, value); // Store the new value
-            found = 1;                   // Mark that the variable was found
+            found = 1;                         // Mark that the variable was found
             break;
         }
     }
@@ -308,7 +329,6 @@ void execute_program(PCB *pcb, int quantum)
 
     printf("\nExecuting program for process id=%d\n", pcb->process_id);
 
-
     printf("Ready queue 1 content:\n");
     print_queue(&readyQueues[0]);
     printf("Ready queue 2 content:\n");
@@ -318,7 +338,7 @@ void execute_program(PCB *pcb, int quantum)
     printf("Ready queue 4 content:\n");
     print_queue(&readyQueues[3]);
     printf("Blocked queue content:\n");
-    print_queue(&generalBlockedQueue); 
+    print_queue(&generalBlockedQueue);
     pcb->state = RUNNING;
     int pc = pcb->program_counter;
 
@@ -539,7 +559,7 @@ void execute_program(PCB *pcb, int quantum)
         {
             break;
         }
-
+        printMemoryPCB(pcb);
         cycle++;
         pc++;
         pcb->program_counter = pc; // Move to the next instruction
@@ -547,7 +567,7 @@ void execute_program(PCB *pcb, int quantum)
     free(instruction);
 
     pcb->state = TERMINATED; // After execution, the process is terminated
-    printf("Process id %i terminated\n",pcb->process_id);
+    printf("Process id %i terminated\n", pcb->process_id);
     printf("Ready queue 1 content:\n");
     print_queue(&readyQueues[0]);
     printf("Ready queue 2 content:\n");
@@ -591,16 +611,73 @@ void run_scheduler()
     }
 }
 
+// helper function for print memory
+void printMemoryPCB(PCB *pcb)
+{
+
+    printf("Memory print starts here\n");
+    int start = pcb->memory_start;
+    int end = pcb->memory_end;
+    print_PCB(pcb);
+    printf("program lines start from memory index %d to memory index %d\n", start + 1, end - 3);
+
+    char *memoryData = malloc(100);
+
+    for (int i = start + 1; i <= end - 3; i++)
+    {
+        strcpy(memoryData, (char *)(&memory[i])->data);
+        memoryData[strcspn(memoryData, "\r\n")] = 0;
+        if (i == end - 3)
+        {
+            printf("Index %d: %s\n", i, memoryData);
+            break;
+        }
+        printf("Index %d: %s, ", i, memoryData);
+    }
+    free(memoryData);
+
+    char *var1 = (&memory[pcb->memory_end - 2])->name;
+    char *var2 = (&memory[pcb->memory_end - 1])->name;
+    char *var3 = (&memory[pcb->memory_end])->name;
+
+    if (strlen(var1) == 0)
+    {
+        printf("variable space 1 is unused\n");
+    }
+    else
+    {
+        printf("variable %s: %s\n", var1, get_variable(pcb, var1));
+    }
+
+    if (strlen(var2) == 0)
+    {
+        printf("variable space 2 is unused\n");
+    }
+    else
+    {
+        printf("variable %s: %s\n", var2, get_variable(pcb, var2));
+    }
+
+    if (strlen(var3) == 0)
+    {
+        printf("variable space 3 is unused\n");
+    }
+    else
+    {
+        printf("variable %s: %s\n", var3, get_variable(pcb, var3));
+    }
+}
+
 int main()
 {
     used = 0;
     cycle = 0;
-    
-    memory = (Element*)malloc(MEMORY_SIZE * sizeof(Element));
+
+    memory = (Element *)malloc(MEMORY_SIZE * sizeof(Element));
 
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
-        (&memory[i])->name = (char*)malloc(100*sizeof(char));
+        (&memory[i])->name = (char *)malloc(100 * sizeof(char));
         (&memory[i])->data = malloc(100);
     }
 
@@ -630,7 +707,6 @@ int main()
         free((&memory[i])->data);
         free((&memory[i])->name);
     }
-
 
     return 0;
 }
