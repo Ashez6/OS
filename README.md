@@ -1,2 +1,2 @@
 # OS
-CSEN 602 Operating system project
+CSEN 602 Operating systems project

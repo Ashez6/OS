@@ -153,6 +153,7 @@ int semWait(Mutex *m, PCB *p)
     {
         m->ownerID = p->process_id;
         m->value = zero;
+        printf("The resource is available\n");
         return 0;
     }
     else
@@ -161,6 +162,7 @@ int semWait(Mutex *m, PCB *p)
         p->state = BLOCKED;
         enqueue(&(m->queue), p);
         enqueue(&generalBlockedQueue, p);
+        printf("The resource is not available ,");
 
         printf("Proccess id %i blocked\n", p->process_id);
         printf("Ready queue 1 content:\n");
@@ -182,7 +184,10 @@ void semSignal(Mutex *m, PCB *p)
     if (m->ownerID == p->process_id)
     {
         if ((&(m->queue))->size == 0)
+        {
+            printf("The resource is now released\n");
             m->value = one;
+        }
         else
         {
             PCB *p2 = dequeue(&(m->queue));
@@ -621,10 +626,6 @@ void printMemory()
     {
         if (strcmp((&memory[i])->name, "PCB") == 0)
         {
-            // PCB *pcb = malloc(sizeof(PCB));
-            // memcpy(pcb, , sizeof(PCB));
-            // printMemoryPCB((PCB *)((&memory[i])->data));
-            // free(pcb);
             PCB *pcb = (&memory[i])->data;
             printMemoryPCB(pcb);
         }
