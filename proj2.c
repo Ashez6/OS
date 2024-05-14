@@ -61,6 +61,9 @@ Mutex fileMutex;
 Queue generalBlockedQueue;
 Queue readyQueues[MAX_QUEUES];
 int cycle;
+
+void printMemory();
+
 void printMemoryPCB(PCB *pcb);
 
 void print_PCB(PCB *pcb)
@@ -258,7 +261,6 @@ PCB *create_process(int id, int priority, char *functionName)
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
     pcb->memory_start = used;
     strcpy((&memory[used])->name, "PCB");
-    memcpy((&memory[used])->data, pcb, sizeof(PCB));
     used++;
     pcb->process_id = id;
     pcb->state = READY;
@@ -266,6 +268,7 @@ PCB *create_process(int id, int priority, char *functionName)
     int start = read_program_to_memory(functionName);
     pcb->program_counter = start;
     pcb->memory_end = used + 2;
+    memcpy((&memory[start - 1])->data, pcb, sizeof(PCB));
 
     enqueue(&readyQueues[priority - 1], pcb);
     used += 3;
@@ -559,7 +562,8 @@ void execute_program(PCB *pcb, int quantum)
         {
             break;
         }
-        printMemoryPCB(pcb);
+        printMemory();
+
         cycle++;
         pc++;
         pcb->program_counter = pc; // Move to the next instruction
@@ -610,12 +614,27 @@ void run_scheduler()
         }
     }
 }
-
+void printMemory()
+{
+    printf("\nMemory print starts here\n");
+    for (int i = 0; i < MEMORY_SIZE; i++)
+    {
+        if (strcmp((&memory[i])->name, "PCB") == 0)
+        {
+            // PCB *pcb = malloc(sizeof(PCB));
+            // memcpy(pcb, , sizeof(PCB));
+            // printMemoryPCB((PCB *)((&memory[i])->data));
+            // free(pcb);
+            PCB *pcb = (&memory[i])->data;
+            printMemoryPCB(pcb);
+        }
+    }
+    printf("Memory print ends here\n");
+}
 // helper function for print memory
 void printMemoryPCB(PCB *pcb)
 {
 
-    printf("Memory print starts here\n");
     int start = pcb->memory_start;
     int end = pcb->memory_end;
     print_PCB(pcb);
