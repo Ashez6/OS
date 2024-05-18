@@ -53,7 +53,6 @@ typedef struct
     void *data;
 } Element;
 
-
 Element *memory;
 
 Mutex inputMutex;
@@ -65,15 +64,16 @@ Queue readyQueues[MAX_QUEUES];
 
 int used = 0;
 int cycle;
-int currentExecQueue=0;
+int currentExecQueue = 0;
 int remainingQuantum;
-PCB* currentRunningProcess;
+PCB *currentRunningProcess;
 
 void printMemory();
 
 void printMemoryPCB(PCB *pcb);
 
-void print_PCB(PCB *pcb){
+void print_PCB(PCB *pcb)
+{
     if (pcb == NULL)
     {
         fprintf(stderr, "Error: Null PCB pointer.\n");
@@ -106,7 +106,8 @@ void print_PCB(PCB *pcb){
     printf("Memory End: %d\n", pcb->memory_end);
 }
 
-void enqueue(Queue *queue, PCB *pcb){
+void enqueue(Queue *queue, PCB *pcb)
+{
     if (queue->size >= MAX_PROCESSES)
     {
         fprintf(stderr, "Error: Queue is full.\n");
@@ -117,7 +118,8 @@ void enqueue(Queue *queue, PCB *pcb){
     queue->size++;
 }
 
-PCB *dequeue(Queue *queue){
+PCB *dequeue(Queue *queue)
+{
     if (queue == NULL)
     {
         fprintf(stderr, "Error: Null queue pointer during dequeue.\n");
@@ -134,7 +136,8 @@ PCB *dequeue(Queue *queue){
     return pcb;
 }
 
-void print_queue(Queue *queue){
+void print_queue(Queue *queue)
+{
     if (queue == NULL)
     {
         fprintf(stderr, "Error: Null queue pointer.\n");
@@ -150,16 +153,19 @@ void print_queue(Queue *queue){
     printf("\n");
 }
 
-void print_Queues(){
-    for (int i = 0; i < MAX_QUEUES; i++){
-        printf("Ready queue %i content:\n",i+1);
+void print_Queues()
+{
+    for (int i = 0; i < MAX_QUEUES; i++)
+    {
+        printf("Ready queue %i content:\n", i + 1);
         print_queue(&readyQueues[i]);
     }
     printf("Blocked queue content:\n");
     print_queue(&generalBlockedQueue);
 }
 
-int semWait(Mutex *m, PCB *p){
+int semWait(Mutex *m, PCB *p)
+{
     if (m->value == one)
     {
         m->ownerID = p->process_id;
@@ -181,7 +187,8 @@ int semWait(Mutex *m, PCB *p){
     }
 }
 
-void semSignal(Mutex *m, PCB *p){
+void semSignal(Mutex *m, PCB *p)
+{
     if (m->ownerID == p->process_id)
     {
         if ((&(m->queue))->size == 0)
@@ -216,14 +223,16 @@ void semSignal(Mutex *m, PCB *p){
     }
 }
 
-void initialize_mutex(Mutex *mutex){
+void initialize_mutex(Mutex *mutex)
+{
     mutex->value = one;
     (&(mutex->queue))->head = 0;
     (&(mutex->queue))->tail = 0;
     (&(mutex->queue))->size = 0;
 }
 
-int read_program_to_memory(const char *filename){
+int read_program_to_memory(const char *filename)
+{
     FILE *file = fopen(filename, "r");
     if (!file)
     {
@@ -251,7 +260,8 @@ int read_program_to_memory(const char *filename){
     return start; // Returns the start index in memory
 }
 
-PCB *create_process(int id, int priority, char *functionName){
+PCB *create_process(int id, int priority, char *functionName)
+{
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
     pcb->memory_start = used;
     strcpy((&memory[used])->name, "PCB");
@@ -267,16 +277,16 @@ PCB *create_process(int id, int priority, char *functionName){
     enqueue(&readyQueues[priority - 1], pcb);
     used += 3;
 
-    printf("Process %i has been created",id);
+    printf("Process %i has been created", id);
     printMemory();
 
     print_Queues();
 
-
     return pcb;
 }
 
-char *get_variable(PCB *pcb, char *variable){
+char *get_variable(PCB *pcb, char *variable)
+{
     // Loop through the process's memory range
     for (int i = pcb->memory_start; i < pcb->memory_end; i++)
     {
@@ -291,7 +301,8 @@ char *get_variable(PCB *pcb, char *variable){
     return NULL;
 }
 
-void store_variable(PCB *pcb, char *variable, char *value){
+void store_variable(PCB *pcb, char *variable, char *value)
+{
     int found = 0;
 
     // Check if the variable already exists
@@ -320,7 +331,8 @@ void store_variable(PCB *pcb, char *variable, char *value){
     }
 }
 
-void execute_program(PCB *pcb){
+void execute_program(PCB *pcb)
+{
     if (pcb == NULL)
     {
         fprintf(stderr, "Error: Null process control block.\n");
@@ -334,11 +346,11 @@ void execute_program(PCB *pcb){
     int pc = pcb->program_counter;
     int start = pcb->memory_start;
 
-
     char *instruction = malloc(50 * sizeof(char));
-    if (strcmp((&memory[pc+start])->name, "lineOfCode") == 0){
+    if (strcmp((&memory[pc + start])->name, "lineOfCode") == 0)
+    {
 
-        strcpy(instruction, (&memory[pc+start])->data);
+        strcpy(instruction, (&memory[pc + start])->data);
 
         if (instruction == NULL)
         {
@@ -350,12 +362,14 @@ void execute_program(PCB *pcb){
 
         char *token = strtok(instruction, " ");
 
-        if (strcmp(token, "print") == 0){
+        if (strcmp(token, "print") == 0)
+        {
 
             token = strtok(NULL, "\r");
             printf("Output: %s\n", get_variable(pcb, token));
         }
-        else if (strcmp(token, "assign") == 0){
+        else if (strcmp(token, "assign") == 0)
+        {
 
             printf("Entered assign \n");
             char *variable = strtok(NULL, " "); // The variable name
@@ -409,7 +423,8 @@ void execute_program(PCB *pcb){
                 store_variable(pcb, variable, value); // Store variable with given value
             }
         }
-        else if (strcmp(token, "semWait") == 0){
+        else if (strcmp(token, "semWait") == 0)
+        {
             char *resource = strtok(NULL, "\r");
 
             if (strcmp(resource, "userOutput") == 0)
@@ -425,7 +440,8 @@ void execute_program(PCB *pcb){
                 semWait(&fileMutex, pcb);
             }
         }
-        else if (strcmp(token, "semSignal") == 0){
+        else if (strcmp(token, "semSignal") == 0)
+        {
             char *resource = strtok(NULL, "\r");
 
             if (strcmp(resource, "userOutput") == 0)
@@ -441,7 +457,8 @@ void execute_program(PCB *pcb){
                 semSignal(&fileMutex, pcb);
             }
         }
-        else if (strcmp(token, "printFromTo") == 0){
+        else if (strcmp(token, "printFromTo") == 0)
+        {
             char *startVar = strtok(NULL, " ");
             char *endVar = strtok(NULL, "\r");
 
@@ -486,7 +503,8 @@ void execute_program(PCB *pcb){
             free(start_value);
             free(end_value);
         }
-        else if (strcmp(token, "writeFile") == 0){
+        else if (strcmp(token, "writeFile") == 0)
+        {
             char *filename = strtok(NULL, " "); // Filename
             char *content = strtok(NULL, "\r"); // Variable
 
@@ -504,84 +522,102 @@ void execute_program(PCB *pcb){
             }
         }
     }
-    else{
+    else
+    {
         printf("PC out of bounds.");
     }
-    
-    if(pcb->memory_end-3 == pc+start){
+
+    if (pcb->memory_end - 3 == pc + start)
+    {
         pcb->state = TERMINATED; // After execution, the process is terminated
         printf("Process id %i terminated\n", pcb->process_id);
         print_Queues();
     }
-    else{
+    else
+    {
         pc++;
         pcb->program_counter = pc; // Move to the next instruction
     }
 
-    if(pcb->state == TERMINATED || pcb->state == BLOCKED){
-        currentExecQueue=0;
+    if (pcb->state == TERMINATED || pcb->state == BLOCKED)
+    {
+        currentExecQueue = 0;
     }
     printMemory();
 
     free(instruction);
-
 }
 
-void run_scheduler(){
+void run_scheduler()
+{
 
-    PCB* p;
-    if(currentExecQueue!=0){
-        p=currentRunningProcess;
+    PCB *p;
+    if (currentExecQueue != 0)
+    {
+        p = currentRunningProcess;
     }
-    else{
-        if ((&readyQueues[0])->size != 0){
-            currentExecQueue=1;
-            remainingQuantum=1;
+    else
+    {
+        if ((&readyQueues[0])->size != 0)
+        {
+            currentExecQueue = 1;
+            remainingQuantum = 1;
         }
-        else if ((&readyQueues[1])->size != 0){
-            currentExecQueue=2;
-            remainingQuantum=2;
+        else if ((&readyQueues[1])->size != 0)
+        {
+            currentExecQueue = 2;
+            remainingQuantum = 2;
         }
-        else if ((&readyQueues[2])->size != 0){
-            currentExecQueue=3;
-            remainingQuantum=4;
+        else if ((&readyQueues[2])->size != 0)
+        {
+            currentExecQueue = 3;
+            remainingQuantum = 4;
         }
-        else if ((&readyQueues[3])->size != 0){
-            currentExecQueue=4;
-            remainingQuantum=8;
+        else if ((&readyQueues[3])->size != 0)
+        {
+            currentExecQueue = 4;
+            remainingQuantum = 8;
         }
-        else{
+        else
+        {
             return;
         }
 
-        p = dequeue((&readyQueues[currentExecQueue-1]));
-        currentRunningProcess=p;
+        p = dequeue((&readyQueues[currentExecQueue - 1]));
+        currentRunningProcess = p;
     }
 
     execute_program(p);
     remainingQuantum--;
-    if(remainingQuantum==0){
+    if (remainingQuantum == 0)
+    {
         int priority = p->priority;
-        if(p->state == RUNNING){
+        if (p->state == RUNNING)
+        {
             p->state = READY;
-            if (priority == 4){
+            if (priority == 4)
+            {
                 enqueue(&readyQueues[priority - 1], p);
             }
-            else{
+            else
+            {
                 enqueue(&readyQueues[priority], p);
                 p->priority = p->priority + 1;
             }
         }
-        else if(p->state == BLOCKED){
-            if(priority<4){
+        else if (p->state == BLOCKED)
+        {
+            if (priority < 4)
+            {
                 p->priority = p->priority + 1;
             }
         }
-        currentExecQueue=0;
+        currentExecQueue = 0;
     }
 }
 
-void printMemory(){
+void printMemory()
+{
     printf("\nMemory print starts here\n");
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
@@ -594,7 +630,8 @@ void printMemory(){
     printf("Memory print ends here\n\n");
 }
 // helper function for print memory
-void printMemoryPCB(PCB *pcb){
+void printMemoryPCB(PCB *pcb)
+{
 
     int start = pcb->memory_start;
     int end = pcb->memory_end;
@@ -652,15 +689,56 @@ int main()
 {
     used = 0;
     cycle = 0;
-    printf("Please enter a arrival time for Program 1: ");
+
     int arrivalOf1;
-    scanf("%d", &arrivalOf1);
-    printf("Please enter a arrival time for Program 2: ");
     int arrivalOf2;
-    scanf("%d", &arrivalOf2);
-    printf("Please enter a arrival time for Program 3: ");
+
     int arrivalOf3;
-    scanf("%d", &arrivalOf3);
+
+    printf("Please enter a arrival time for Program 1: ");
+    char arrivalOf1str[100];
+    if (fgets(arrivalOf1str, sizeof(arrivalOf1str), stdin) == NULL)
+    {
+        fprintf(stderr, "Error: Failed to read user input.\n");
+    }
+    else
+    {
+        arrivalOf1 = atoi(arrivalOf1str);
+    }
+
+    printf("Please enter a arrival time for Program 2: ");
+    char arrivalOf2str[100];
+    if (fgets(arrivalOf2str, sizeof(arrivalOf2str), stdin) == NULL)
+    {
+        fprintf(stderr, "Error: Failed to read user input.\n");
+    }
+    else
+    {
+        arrivalOf2 = atoi(arrivalOf2str);
+    }
+
+    printf("Please enter a arrival time for Program 3: ");
+    char arrivalOf3str[100];
+    if (fgets(arrivalOf3str, sizeof(arrivalOf3str), stdin) == NULL)
+    {
+        fprintf(stderr, "Error: Failed to read user input.\n");
+    }
+    else
+    {
+        arrivalOf3 = atoi(arrivalOf3str);
+    }
+
+    // printf("Please enter a arrival time for Program 1: ");
+    // int arrivalOf1 = 0;
+    // scanf("%d", &arrivalOf1);
+    // printf("Please enter a arrival time for Program 2: ");
+    // int arrivalOf2 = 0;
+    // scanf("%d", &arrivalOf2);
+    // printf("Please enter a arrival time for Program 3: ");
+    // int arrivalOf3 = 0;
+    // scanf("%d", &arrivalOf3);
+
+    // printf("ARIVAL OF 1: %d, ARIVAL OF 2: %d, ARIVAL OF 3: %d,", arrivalOf1, arrivalOf2, arrivalOf3);
 
     memory = (Element *)malloc(MEMORY_SIZE * sizeof(Element));
 
@@ -685,35 +763,36 @@ int main()
     (&generalBlockedQueue)->tail = 0;
     (&generalBlockedQueue)->size = 0;
 
-    currentExecQueue=0;
-    remainingQuantum=0;
+    currentExecQueue = 0;
+    remainingQuantum = 0;
 
-    while (1){
+    while (1)
+    {
 
-        if ((&readyQueues[0])->size == 0 && (&readyQueues[1])->size == 0 && (&readyQueues[2])->size == 0
-                && (&readyQueues[3])->size == 0 && currentExecQueue==0 && cycle>arrivalOf1 
-                && cycle>arrivalOf2 && cycle>arrivalOf3) {
+        if ((&readyQueues[0])->size == 0 && (&readyQueues[1])->size == 0 && (&readyQueues[2])->size == 0 && (&readyQueues[3])->size == 0 && currentExecQueue == 0 && cycle > arrivalOf1 && cycle > arrivalOf2 && cycle > arrivalOf3)
+        {
             break;
         }
-        
-        printf("Cycle %i:\n",cycle);
-        if(arrivalOf1==cycle){
+
+        printf("Cycle %i:\n", cycle);
+        if (arrivalOf1 == cycle)
+        {
             create_process(1, 1, "Program_1.txt");
         }
 
-        if(arrivalOf2==cycle){
+        if (arrivalOf2 == cycle)
+        {
             create_process(2, 1, "Program_2.txt");
         }
 
-        if(arrivalOf3==cycle){
+        if (arrivalOf3 == cycle)
+        {
             create_process(3, 1, "Program_3.txt");
         }
 
-
-
+        run_scheduler();
         cycle++;
     }
-    
 
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
