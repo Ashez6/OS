@@ -358,7 +358,7 @@ void execute_program(PCB *pcb)
             return;
         }
 
-        printf("Processing instruction: %s", instruction);
+        printf("PROCESSING INSTRUCTION: %s", instruction);
 
         char *token = strtok(instruction, " ");
 
@@ -690,6 +690,7 @@ int main()
     used = 0;
     cycle = 0;
 
+    // Take the arrival time as input from the user
     int arrivalOf1;
     int arrivalOf2;
 
@@ -728,17 +729,7 @@ int main()
         arrivalOf3 = atoi(arrivalOf3str);
     }
 
-    // printf("Please enter a arrival time for Program 1: ");
-    // int arrivalOf1 = 0;
-    // scanf("%d", &arrivalOf1);
-    // printf("Please enter a arrival time for Program 2: ");
-    // int arrivalOf2 = 0;
-    // scanf("%d", &arrivalOf2);
-    // printf("Please enter a arrival time for Program 3: ");
-    // int arrivalOf3 = 0;
-    // scanf("%d", &arrivalOf3);
-
-    // printf("ARIVAL OF 1: %d, ARIVAL OF 2: %d, ARIVAL OF 3: %d,", arrivalOf1, arrivalOf2, arrivalOf3);
+    // Initialize the memory and every single memory element
 
     memory = (Element *)malloc(MEMORY_SIZE * sizeof(Element));
 
@@ -748,6 +739,7 @@ int main()
         (&memory[i])->data = malloc(100);
     }
 
+    // Initialize each mutex and the ready queues and also the general blocked queue
     initialize_mutex(&inputMutex);
     initialize_mutex(&outputMutex);
     initialize_mutex(&fileMutex);
@@ -769,6 +761,7 @@ int main()
     while (1)
     {
 
+        // Stopping condition
         if ((&readyQueues[0])->size == 0 && (&readyQueues[1])->size == 0 && (&readyQueues[2])->size == 0 && (&readyQueues[3])->size == 0 && currentExecQueue == 0 && cycle > arrivalOf1 && cycle > arrivalOf2 && cycle > arrivalOf3)
         {
             break;
@@ -794,6 +787,7 @@ int main()
         cycle++;
     }
 
+    // At the end of the program we free all the alocated memory
     for (int i = 0; i < MEMORY_SIZE; i++)
     {
         free((&memory[i])->data);
